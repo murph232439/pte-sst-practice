@@ -68,12 +68,13 @@ function cardMode(item){
   '<div class="row"><button class="bigbtn" id="playBtn">▶ 播放原文音频</button></div>'+
   '<div style="font-size:13px;color:#98a0ae">先听音频，看着下面的词组回忆原文；再听一遍，试着用这些词组把整段说出来。</div></div>'+
   '<div class="panel"><div class="lbl" style="font-size:12.5px;color:#98a0ae;margin-bottom:6px">听力原文关键词组（按出现顺序）</div><ol class="phlist">'+item.phrases2.map(p=>'<li>'+esc(p.en)+(p.zh?'<span class=zhph>'+esc(p.zh)+'</span>':'')+'</li>').join('')+'</ol>'+
-  '<div class="row" style="margin-top:6px"><button class="bigbtn ghost" id="showRef">看听力原文</button></div>'+
+  '<div class="row" style="margin-top:6px"><button class="bigbtn ghost" id="showRef">看听力原文</button><button class="bigbtn ghost" id="showTpl">复述模板</button></div><div class="ans" id="tpl"><div class="lbl">RL 复述模板</div><div class="ref">The lecture is mainly about ______.<br><br>First, the speaker mentions that ______.<br>Second, ______.<br>Third, ______.<br><br>So, in conclusion, ______.</div><div class="lbl" style="margin-top:10px">使用顺序</div><div class="ref">1. 先听音频，不看文字<br>2. 看着关键词组记笔记<br>3. 用模板把笔记串成话<br>4. 最后再点「看听力原文」核对</div></div>'+
   '<div class="ans" id="ans"><div class="lbl">听力原文</div><div class="ref">'+esc(item.eng)+'</div></div></div>';
   document.getElementById('list').innerHTML=h;
   document.getElementById('back').onclick=()=>{if(CUR){CUR.pause()}renderList(document.getElementById('q').value)};
   document.getElementById('playBtn').onclick=function(){playAudio(item.audio,this)};
   document.getElementById('showRef').onclick=()=>document.getElementById('ans').classList.toggle('on');
+document.getElementById('showTpl').onclick=()=>document.getElementById('tpl').classList.toggle('on');
 }
 function buildMode(item){
   var h='<span class="back" id="back">← 返回</span><div class="panel"><div class="ptitle">'+esc(item.name)+'</div>'+
@@ -87,6 +88,7 @@ function buildMode(item){
   document.getElementById('back').onclick=()=>{if(CUR){CUR.pause()}renderList(document.getElementById('q').value)};
   document.getElementById('playBtn').onclick=function(){playAudio(item.audio,this)};
   document.getElementById('showRef').onclick=()=>document.getElementById('ans').classList.toggle('on');
+document.getElementById('showTpl').onclick=()=>document.getElementById('tpl').classList.toggle('on');
 }
 function fixMode(){
   if(!FIXORDER.length){FIXORDER=shuffle(D.errors.map((_,i)=>i));FIXIDX=0;}
