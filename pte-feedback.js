@@ -1,0 +1,427 @@
+(function () {
+  "use strict";
+
+  if (window.PTEFeedback) return;
+
+  var KEY_NAME = "ds_key";
+  var STOP = new Set([
+    "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "with", "as",
+    "is", "are", "was", "were", "be", "been", "by", "from", "that", "this", "it",
+    "its", "their", "our", "we", "you", "they", "he", "she", "at", "into", "about"
+  ]);
+
+  function escapeHtml(value) {
+    return String(value || "").replace(/[&<>"']/g, function (char) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+    });
+  }
+
+  function ensureStyles() {
+    if (document.getElementById("pfbStyles")) return;
+    var style = document.createElement("style");
+    style.id = "pfbStyles";
+    style.textContent = [
+      ".pfbBox{margin-top:12px;padding-top:12px;border-top:1px solid #eef1f6}",
+      ".pfbRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}",
+      ".pfbBtn{border:0;border-radius:10px;padding:10px 15px;font-size:14px;font-weight:650;cursor:pointer;background:#2456a6;color:#fff}",
+      ".pfbBtn.ghost{background:#eef3fb;color:#2456a6}",
+      ".pfbBtn:disabled{opacity:.55;cursor:wait}",
+      ".pfbFb{display:none;margin-top:10px;padding:12px 13px;border:1px solid #e3e7ee;border-radius:10px;background:#fbfcfe;font-size:14px;line-height:1.75;white-space:pre-wrap}",
+      ".pfbFb.on{display:block}",
+      ".pfbMeta{font-weight:700;color:#2456a6;margin-bottom:5px}",
+      ".pfbSmall{font-size:12.5px;color:#8b93a3;margin-top:5px}",
+      ".pfbChips{display:flex;flex-wrap:wrap;gap:6px;margin:7px 0}",
+      ".pfbChip{display:inline-block;border-radius:14px;padding:3px 9px;font-size:12.5px;background:#fff2d9;color:#8a5b00}",
+      ".pfbList{margin:5px 0 0 18px}.pfbList li{margin:3px 0}",
+      ".pfbTa{width:100%;min-height:100px;border:1px solid #d8dde6;border-radius:10px;padding:10px;font:inherit;line-height:1.6;resize:vertical}",
+      ".pfbTa:focus{border-color:#2456a6;outline:0}"
+    ].join("");
+    document.head.appendChild(style);
+  }
+
+  function words(text) {
+    return String(text || "")
+      .replace(/[’‘]/g, "'")
+      .toLowerCase()
+      .match(/[a-z0-9]+(?:'[a-z]+)?/g) || [];
+  }
+
+  function wordCount(text) {
+    return words(text).length;
+  }
+
+  function stem(token) {
+    if (token.length > 5 && token.endsWith("ing")) return token.slice(0, -3);
+    if (token.length > 4 && token.endsWith("ed")) return token.slice(0, -2);
+    if (token.length > 4 && token.endsWith("es")) return token.slice(0, -2);
+    if (token.length > 3 && token.endsWith("s")) return token.slice(0, -1);
+    return token;
+  }
+
+  function significant(text) {
+    return words(text).filter(function (token) { return !STOP.has(token); }).map(stem);
+  }
+
+  function phraseCovered(text, phrase) {
+    var source = words(text);
+    var phraseWords = significant(phrase);
+    if (!phraseWords.length) {
+      phraseWords = words(phrase);
+    }
+    if (!phraseWords.length) return false;
+    var haystack = " " + source.join(" ") + " ";
+    var needle = " " + words(phrase).join(" ") + " ";
+    if (haystack.indexOf(needle) >= 0) return true;
+    var sourceSet = new Set(source.map(stem));
+    var hit = phraseWords.filter(function (token) { return sourceSet.has(token); }).length;
+    var threshold = phraseWords.length <= 2 ? phraseWords.length : Math.ceil(phraseWords.length * 0.7);
+    return hit >= threshold;
+  }
+
+  function coverageResult(text, phrases) {
+    phrases = phrases || [];
+    var matched = [];
+    var missed = [];
+    phrases.forEach(function (phrase) {
+      var en = typeof phrase === "string" ? phrase : phrase.en;
+      if (phraseCovered(text, en)) matched.push(phrase);
+      else missed.push(phrase);
+    });
+    return { matched: matched, missed: missed, total: phrases.length };
+  }
+
+  function appendPhraseChips(host, phrases) {
+    var wrap = document.createElement("div");
+    wrap.className = "pfbChips";
+    phrases.forEach(function (phrase) {
+      var chip = document.createElement("span");
+      chip.className = "pfbChip";
+      var en = typeof phrase === "string" ? phrase : phrase.en;
+      var zh = typeof phrase === "string" ? "" : phrase.zh;
+      chip.textContent = en + (zh ? " · " + zh : "");
+      wrap.appendChild(chip);
+    });
+    host.appendChild(wrap);
+  }
+
+  function renderCoverage(host, text, phrases, part) {
+    host.textContent = "";
+    var result = coverageResult(text, phrases);
+    var ratio = result.total ? result.matched.length / result.total : 0;
+    var title = document.createElement("div");
+    title.className = "pfbMeta";
+    title.textContent = "快速反馈：关键点覆盖 " + result.matched.length + "/" + result.total;
+    host.appendChild(title);
+
+    if (result.missed.length) {
+      var missLabel = document.createElement("div");
+      missLabel.textContent = "这次没有清楚带到的内容：";
+      host.appendChild(missLabel);
+      appendPhraseChips(host, result.missed);
+    } else {
+      var complete = document.createElement("div");
+      complete.textContent = "关键点基本都带到了，内容骨架已经比较稳。";
+      host.appendChild(complete);
+    }
+
+    var action = document.createElement("div");
+    if (ratio >= 0.8) {
+      action.textContent = "下一步：把已覆盖的词组连成完整句，检查主语、动词和单复数。";
+    } else if (ratio >= 0.5) {
+      action.textContent = "下一步：先按上面的缺漏词组各补半句，再重新顺一遍逻辑。";
+    } else {
+      action.textContent = "下一步：先不要追求长句，按关键词的先后顺序说出讲座主干。";
+    }
+    host.appendChild(action);
+
+    if (part === "sst" || part === "SST") {
+      var count = wordCount(text);
+      var wordTip = document.createElement("div");
+      wordTip.className = "pfbSmall";
+      wordTip.textContent = "当前 " + count + " 词；SST 摘要目标为 50-70 词。";
+      host.appendChild(wordTip);
+    }
+  }
+
+  function lcsSize(a, b) {
+    var row = new Array(b.length + 1).fill(0);
+    for (var i = 1; i <= a.length; i++) {
+      var prev = 0;
+      for (var j = 1; j <= b.length; j++) {
+        var old = row[j];
+        row[j] = a[i - 1] === b[j - 1] ? prev + 1 : Math.max(row[j], row[j - 1]);
+        prev = old;
+      }
+    }
+    return row[b.length];
+  }
+
+  function renderFixCheck(host, answer, reference) {
+    host.textContent = "";
+    var userWords = words(answer);
+    var refWords = words(reference);
+    var common = lcsSize(userWords, refWords);
+    var score = userWords.length + refWords.length
+      ? Math.round((2 * common / (userWords.length + refWords.length)) * 100)
+      : 0;
+    var title = document.createElement("div");
+    title.className = "pfbMeta";
+    title.textContent = "快速反馈：与参考答案的词形匹配约 " + score + "%";
+    host.appendChild(title);
+
+    var userSet = new Set(userWords);
+    var refSet = new Set(refWords);
+    var missing = refWords.filter(function (token) { return !userSet.has(token); });
+    var extra = userWords.filter(function (token) { return !refSet.has(token); });
+    if (missing.length) {
+      var miss = document.createElement("div");
+      miss.textContent = "参考段落中出现、你的答案中没有的词：" + missing.slice(0, 14).join(", ");
+      host.appendChild(miss);
+    }
+    if (extra.length) {
+      var add = document.createElement("div");
+      add.textContent = "你的答案里多出的词：" + extra.slice(0, 14).join(", ");
+      host.appendChild(add);
+    }
+    var tip = document.createElement("div");
+    tip.textContent = "优先检查这些位置附近的时态、单复数、拼写和介词。";
+    host.appendChild(tip);
+  }
+
+  function getKey() {
+    var key = localStorage.getItem(KEY_NAME) || "";
+    if (key) return key;
+    key = (window.prompt("粘贴 DeepSeek API Key。Key 只会保存在这台设备的浏览器中。", "") || "").trim();
+    if (key) localStorage.setItem(KEY_NAME, key);
+    return key;
+  }
+
+  async function deepFeedback(options, host) {
+    var text = (options.text || "").trim();
+    if (!text) {
+      host.classList.add("on");
+      host.textContent = "先把摘要、笔记或复述转写放进来，再点 AI 批改。";
+      return;
+    }
+    var key = getKey();
+    if (!key) return;
+
+    host.classList.add("on");
+    host.textContent = "正在给对方反馈，请稍等…";
+    var part = options.part || "";
+    var system;
+    if (part === "fix") {
+      system = "你是 PTE 段落改错老师。请只根据学生答案和正确段落批改。先用一句具体肯定，再列出最重要的错误并给改后表达，最后给一版完整正确段落。中文讲解，英文举例，语气鼓励，不用“不是...而是...”句式。";
+    } else if (part === "sst" || part === "SST") {
+      system = "你是 PTE SST 摘要批改老师。先给一句具体肯定，再按“内容覆盖 / 语言问题 / 下一步”反馈。最多指出 3 个语言问题，每条必须引用学生原句并给出改后表达，不用分数，不写空泛建议，不用“不是...而是...”句式。最后给一版 50-70 词的改进摘要。中文讲解，英文举例。";
+    } else {
+      system = "你是 PTE RL 复述老师。先给一句具体肯定，再按“内容覆盖 / 组织与表达 / 下一步”反馈。请列出漏掉的关键信息，指出最影响理解的表达问题并给改后句子，最后给一版约 40 秒可说的示范复述。中文讲解，英文举例，语气鼓励，不用“不是...而是...”句式。";
+    }
+    var phraseText = (options.phrases || []).map(function (phrase) {
+      return typeof phrase === "string" ? phrase : phrase.en;
+    }).join("; ");
+    var transcript = (options.transcript || "").slice(0, 9000);
+    var user = [
+      "题目：" + (options.title || ""),
+      "关键点：" + phraseText,
+      "参考内容：" + (options.reference || ""),
+      "听力原文/上下文：" + transcript,
+      "学生输入：" + text,
+      "请直接给可执行的反馈。"
+    ].join("\n\n");
+
+    try {
+      var response = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + key
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user }
+          ],
+          temperature: 0.3,
+          max_tokens: 1800
+        })
+      });
+      var data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error((data.error && data.error.message) || ("HTTP " + response.status));
+      }
+      host.textContent = data.choices && data.choices[0] && data.choices[0].message.content
+        ? data.choices[0].message.content
+        : "没有收到反馈内容。";
+    } catch (error) {
+      host.textContent = "反馈失败：" + error.message + "\n可能是 API Key、网络或额度问题。快速反馈仍然可以继续使用。";
+    }
+  }
+
+  function makeControls(config) {
+    ensureStyles();
+    var box = document.createElement("div");
+    box.className = "pfbBox";
+
+    var textarea;
+    if (config.textarea === false) {
+      textarea = config.existing || null;
+    } else {
+      textarea = document.createElement("textarea");
+      textarea.className = "pfbTa";
+      textarea.placeholder = config.placeholder || "写下你的摘要、笔记或刚才说的转写…";
+      box.appendChild(textarea);
+    }
+
+    var row = document.createElement("div");
+    row.className = "pfbRow";
+    var quick = document.createElement("button");
+    quick.type = "button";
+    quick.className = "pfbBtn ghost";
+    quick.textContent = config.quickLabel || "快速反馈";
+    var ai = document.createElement("button");
+    ai.type = "button";
+    ai.className = "pfbBtn";
+    ai.textContent = config.aiLabel || "AI 精批";
+    row.appendChild(quick);
+    row.appendChild(ai);
+    box.appendChild(row);
+
+    var feedback = document.createElement("div");
+    feedback.className = "pfbFb";
+    box.appendChild(feedback);
+
+    quick.addEventListener("click", function () {
+      feedback.classList.add("on");
+      if (config.onQuick) {
+        config.onQuick((textarea && textarea.value) || "", feedback);
+      } else {
+        renderCoverage(feedback, (textarea && textarea.value) || "", config.phrases || [], config.part);
+      }
+    });
+    ai.addEventListener("click", function () {
+      deepFeedback({
+        text: (textarea && textarea.value) || "",
+        part: config.part,
+        title: config.title,
+        reference: config.reference,
+        transcript: config.transcript,
+        phrases: config.phrases || []
+      }, feedback);
+    });
+    return box;
+  }
+
+  function mountPractice() {
+    if (typeof window.practice !== "function") return;
+    var original = window.practice;
+    window.practice = function (item) {
+      original(item);
+      var list = document.getElementById("list");
+      if (!list || list.querySelector(".pfbBox")) return;
+      var part = window.TT || "rl";
+      var sstBox = document.getElementById("ans");
+      var controls = makeControls({
+        existing: sstBox,
+        textarea: sstBox ? false : true,
+        phrases: item.phrases || [],
+        part: part,
+        title: item.name,
+        reference: item.ref,
+        transcript: item.ana,
+        placeholder: part === "rl" ? "写下你的复述笔记，或把刚才说的话转写到这里…" : ""
+      });
+
+      if (sstBox) {
+        var panel = sstBox.closest(".panel");
+        if (panel) panel.appendChild(controls);
+      } else {
+        var newPanel = document.createElement("div");
+        newPanel.className = "panel";
+        newPanel.appendChild(controls);
+        var refSec = document.getElementById("refSec");
+        var refPanel = refSec && refSec.closest(".panel");
+        if (refPanel && refPanel.parentNode) refPanel.parentNode.insertBefore(newPanel, refPanel);
+        else list.appendChild(newPanel);
+      }
+    };
+  }
+
+  function mountSkill() {
+    if (typeof window.cardMode === "function") {
+      var oldCard = window.cardMode;
+      window.cardMode = function (item) {
+        try { oldCard(item); } catch (error) { console.warn("card mode", error); }
+        var panel = document.createElement("div");
+        panel.className = "panel";
+        panel.appendChild(makeControls({
+          phrases: item.phrases2 || [],
+          part: item.part || "",
+          title: item.name,
+          reference: item.ref,
+          transcript: item.eng
+        }));
+        document.getElementById("list").appendChild(panel);
+      };
+    }
+
+    if (typeof window.buildMode === "function") {
+      var oldBuild = window.buildMode;
+      window.buildMode = function (item) {
+        try { oldBuild(item); } catch (error) { console.warn("build mode", error); }
+        var textarea = document.getElementById("ta");
+        if (!textarea) return;
+        var controls = makeControls({
+          existing: textarea,
+          textarea: false,
+          phrases: item.phrases2 || [],
+          part: item.part || "",
+          title: item.name,
+          reference: item.ref,
+          transcript: item.eng,
+          quickLabel: "检查词组"
+        });
+        textarea.closest(".panel").appendChild(controls);
+      };
+    }
+
+    if (typeof window.fixMode === "function") {
+      var oldFix = window.fixMode;
+      window.fixMode = function () {
+        try { oldFix.apply(this, arguments); } catch (error) { console.warn("fix mode", error); }
+        var textarea = document.getElementById("ta");
+        if (!textarea) return;
+        var index = window.FIXORDER && window.FIXORDER.length ? window.FIXORDER[window.FIXIDX] : 0;
+        var entry = window.D && window.D.errors ? window.D.errors[index] : null;
+        if (!entry) return;
+        var controls = makeControls({
+          existing: textarea,
+          textarea: false,
+          phrases: [],
+          part: "fix",
+          title: entry.name,
+          reference: entry.good,
+          transcript: entry.bad,
+          quickLabel: "对比答案",
+          onQuick: function (answer, feedback) {
+            renderFixCheck(feedback, answer, entry.good);
+          }
+        });
+        textarea.closest(".panel").appendChild(controls);
+      };
+    }
+  }
+
+  function init() {
+    mountPractice();
+    mountSkill();
+  }
+
+  window.PTEFeedback = { init: init };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
