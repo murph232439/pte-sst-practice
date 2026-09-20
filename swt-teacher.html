@@ -56,7 +56,7 @@ footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
     <div class="field"><label>搜索题目</label><input id="bankSearch" placeholder="输入 American / 工作 / 能源"></div>
     <div class="field"><label>选择题目</label><select id="bankSelect"></select></div>
     <div class="check on" id="bankAnswer"><span class="label">选择题目后在这里查看范文</span></div>
-    <div class="row"><button class="btn ghost" id="bankToCheck">把范文放进语法检查</button></div>
+    <div class="row"><button class="btn ghost" id="bankToExtract">拆解范文结构</button><button class="btn ghost" id="bankToCheck">把范文放进语法检查</button></div>
   </div>
   <div class="panel">
     <h2>官方评分机制</h2>
@@ -91,7 +91,7 @@ footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
       <div class="block"><div class="label">DEVELOPMENT 关键发展</div><div class="content" id="devText">-</div><div class="chips" id="devChips"></div></div>
       <div class="block"><div class="label">SO WHAT 影响/意义</div><div class="content" id="soText">-</div><div class="chips" id="soChips"></div></div>
     </div>
-    <div class="row"><button class="btn" id="fillBtn">填入模板</button></div>
+    <div class="row"><button class="btn" id="fillBtn">填入候选（需检查）</button></div>
   </div>
 
   <div class="panel">
@@ -104,12 +104,13 @@ footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
       <option value="which">关系从句型</option>
       <option value="with">With 伴随型</option>
     </select></div>
-    <div class="field"><label>WHAT</label><input id="whatInput" placeholder="the main subject"></div>
-    <div class="field"><label>DEVELOPMENT 1</label><input id="dev1Input" placeholder="first key development"></div>
-    <div class="field"><label>DEVELOPMENT 2</label><input id="dev2Input" placeholder="second key development"></div>
-    <div class="field"><label>SO WHAT</label><input id="soInput" placeholder="impact, result or significance"></div>
+    <div class="field"><label>WHAT（只填名词短语）</label><input id="whatInput" placeholder="the discovery of penicillin"></div>
+    <div class="field"><label>DEVELOPMENT 1（只填名词短语）</label><input id="dev1Input" placeholder="Fleming's accidental observation"></div>
+    <div class="field"><label>DEVELOPMENT 2（只填名词短语）</label><input id="dev2Input" placeholder="later mass production during WWII"></div>
+    <div class="field"><label>SO WHAT（只填名词短语）</label><input id="soInput" placeholder="its revolutionary impact on modern medicine"></div>
     <div class="row"><button class="btn" id="buildBtn">生成一句话</button><button class="btn ghost" id="copyBtn">复制</button></div>
     <div class="out" id="sentenceOut">生成结果会显示在这里。</div>
+    <div class="check" id="sentenceCheck"></div>
   </div>
 
   <div class="panel">
@@ -152,17 +153,49 @@ function splitSentences(text){return (text||'').replace(/\s+/g,' ').match(/[^.!?
 function tokenize(text){return (text||'').toLowerCase().replace(/[’‘]/g,"'").match(/[a-z][a-z'-]*|\d+(?:\.\d+)?/g)||[]}
 async function ensureNlp(){if(NLP)return NLP;try{NLP=(await import('./compromise-three.mjs')).default}catch(e){NLP=null}return NLP}
 function cleanCandidate(s){return s.trim().replace(/^(the|a|an|this|these|those|its|their|his|her|our|some|several|many|most)\s+/i,'').replace(/[.,;:]+$/,'')}
-function candidatePhrases(sentence,nlp){var out=[];if(nlp){try{out=out.concat(nlp(sentence).nouns().out('array'));out=out.concat(nlp(sentence).topics().out('array'))}catch(e){}}out=out.concat(phraseScore(sentence));var seen={};return out.map(cleanCandidate).filter(function(x){var words=tokenize(x);if(!x||words.length<1||words.length>7)return false;if(words.every(function(w){return STOP.has(w)}))return false;var k=x.toLowerCase();if(seen[k])return false;seen[k]=1;return true})}
+function candidatePhrases(sentence,nlp){var out=[];if(!nlp)return out;try{out=out.concat(nlp(sentence).nouns().out('array'));out=out.concat(nlp(sentence).topics().out('array'))}catch(e){}var seen={};return out.map(cleanCandidate).filter(function(x){var words=tokenize(x);if(!x||words.length<1||words.length>7)return false;if(words.every(function(w){return STOP.has(w)}))return false;if(words.length===1&&/’s$|'s$/i.test(x))return false;var k=x.toLowerCase();if(seen[k])return false;seen[k]=1;return true})}
 function rankCandidate(x){var t=tokenize(x),score=0;t.forEach(function(w){if(IMPACT.has(w))score+=3;if(GENERIC.has(w))score-=4;if(/\d/.test(w))score+=2});if(t.length>=2)score+=1;if(t.length>=4)score+=1;return score}
 function rankList(items){return items.map(function(x,i){return {x:x,i:i}}).sort(function(a,b){return rankCandidate(b.x)-rankCandidate(a.x)||a.i-b.i}).map(function(row){return row.x})}
 function phraseScore(text){var t=tokenize(text),freq={},i;t.forEach(function(w){if(!STOP.has(w)&&w.length>2)freq[w]=(freq[w]||0)+1});var phrases={};for(i=0;i<t.length;i++){for(var n=2;n<=3;n++){var a=t.slice(i,i+n);if(a.length<n)continue;if(STOP.has(a[0])||STOP.has(a[n-1]))continue;var p=a.join(' ');phrases[p]=(phrases[p]||0)+a.reduce(function(s,w){return s+(freq[w]||0)},0)+1}}return Object.keys(phrases).sort(function(a,b){return phrases[b]-phrases[a]})}
 function firstPhrases(sentence,limit,nlp){return candidatePhrases(sentence,nlp).slice(0,limit||3)}
 function showReader(){SENTENCES=splitSentences(document.getElementById('source').value).map(function(s){return s.trim()}).filter(Boolean);SIDX=0;document.getElementById('readerPanel').classList.remove('hidden');renderReader()}
 function renderReader(){var s=SENTENCES[SIDX]||'';var out=esc(s);KEYWORDS.slice(0,8).forEach(function(k){out=out.replace(new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','ig'),'<mark>$&</mark>')});document.getElementById('readerText').innerHTML=out||'没有可显示的句子';document.getElementById('readerCounter').textContent=(SIDX+1)+' / '+SENTENCES.length}
-async function extract(){var s=splitSentences(document.getElementById('source').value);if(!s.length)return;var nlp=await ensureNlp();var firstPool=firstPhrases(s[0],9,nlp),firstRaw=firstPool.slice(0,2),first=Array.from(new Set(firstRaw.concat(rankList(firstPool)).slice(0,5)));var last=rankList(firstPhrases(s[s.length-1],7,nlp)).slice(0,5),middle=[];for(var i=1;i<s.length-1;i++)middle=middle.concat(firstPhrases(s[i],5,nlp));var counts={};middle.forEach(function(x){counts[x]=(counts[x]||0)+1});middle=Object.keys(counts).sort(function(a,b){return (counts[b]-counts[a])||(rankCandidate(b)-rankCandidate(a))||middle.indexOf(a)-middle.indexOf(b)});var dev=middle.slice(0,6);CANDIDATES={what:first,dev:dev,so:last};KEYWORDS=first.slice(0,2).concat(dev.slice(0,3)).concat(last.slice(0,2));KEYWORDS=Array.from(new Set(KEYWORDS));document.getElementById('keywordPanel').classList.remove('hidden');renderCandidates('what',first,'whatText','whatChips');renderCandidates('dev',dev,'devText','devChips');renderCandidates('so',last,'soText','soChips');renderReader()}
+async function extract(){
+  var source=document.getElementById('source').value,s=splitSentences(source);
+  if(!s.length)return;
+  var nlp=await ensureNlp();
+  if(!nlp){document.getElementById('keywordPanel').classList.remove('hidden');document.getElementById('whatText').textContent='语法库未加载';document.getElementById('devText').textContent='请刷新页面';document.getElementById('soText').textContent='再试一次';return}
+  var first,dev,last;
+  if(s.length===1){
+    var pool=firstPhrases(s[0],20,nlp);
+    var fallback=phraseScore(s[0]).map(cleanCandidate).filter(function(x){return x&&tokenize(x).length>=2});
+    pool=Array.from(new Set(pool.concat(fallback)));
+    first=pool.slice(0,2);
+    dev=pool.slice(2,5);
+    last=pool.slice(-2);
+  }else{
+    var firstPool=firstPhrases(s[0],9,nlp),firstRaw=firstPool.slice(0,2);
+    first=Array.from(new Set(firstRaw.concat(rankList(firstPool)).slice(0,5)));
+    last=rankList(firstPhrases(s[s.length-1],7,nlp)).slice(0,5);
+    var middle=[];
+    for(var i=1;i<s.length-1;i++)middle=middle.concat(firstPhrases(s[i],5,nlp));
+    var counts={};middle.forEach(function(x){counts[x]=(counts[x]||0)+1});
+    middle=Object.keys(counts).sort(function(a,b){return (counts[b]-counts[a])||(rankCandidate(b)-rankCandidate(a))||middle.indexOf(a)-middle.indexOf(b)});
+    dev=middle.slice(0,6);
+  }
+  CANDIDATES={what:first,dev:dev,so:last};
+  KEYWORDS=first.slice(0,2).concat(dev.slice(0,3)).concat(last.slice(0,2));
+  KEYWORDS=Array.from(new Set(KEYWORDS));
+  document.getElementById('keywordPanel').classList.remove('hidden');
+  renderCandidates('what',first,'whatText','whatChips');
+  renderCandidates('dev',dev,'devText','devChips');
+  renderCandidates('so',last,'soText','soChips');
+  renderReader();
+}
 function renderCandidates(kind,items,textId,chipId){var text=document.getElementById(textId),chips=document.getElementById(chipId);text.textContent=items[0]||'-';chips.innerHTML=items.slice(1).map(function(x,i){return '<span class="chip" data-kind="'+kind+'" data-index="'+(i+1)+'">'+esc(x)+'</span>'}).join('')}
 function fillTemplate(){document.getElementById('whatInput').value=CANDIDATES.what[0]||'';document.getElementById('dev1Input').value=CANDIDATES.dev[0]||'';document.getElementById('dev2Input').value=CANDIDATES.dev[1]||'';document.getElementById('soInput').value=CANDIDATES.so[0]||'';buildSentence()}
-function buildSentence(){var w=document.getElementById('whatInput').value.trim()||'the main topic',d1=document.getElementById('dev1Input').value.trim()||'the first key development',d2=document.getElementById('dev2Input').value.trim()||'the second key development',so=document.getElementById('soInput').value.trim()||'its broader significance',t=document.getElementById('template').value,s;if(t==='safe')s='The passage discusses '+w+' with '+d1+' and '+d2+', highlighting '+so.replace(/^which\s+/i,'')+'.';else if(t==='while')s='While '+d1+', the passage discusses '+w+', as '+d2+', thereby highlighting '+so.replace(/^which\s+/i,'')+'.';else if(t==='which')s='The passage discusses '+w+', which involves '+d1+' and '+d2+', ultimately highlighting '+so.replace(/^which\s+/i,'')+'.';else if(t==='with')s='The passage discusses '+w+' with '+d1+' and '+d2+', which highlights '+so.replace(/^which\s+/i,'')+'.';else s='The passage discusses '+w+', covering '+d1+' and '+d2+', which highlights '+so.replace(/^which\s+/i,'')+'.';document.getElementById('sentenceOut').textContent=s}
+function validNounPhrase(value){var v=(value||'').trim(),words=tokenize(v);if(!v||words.length>12)return false;if(/[.!?]$/.test(v))return false;if(/\b(is|are|was|were|has been|have been|will be)\b/i.test(v))return false;if(/\b(because|although|though|while|whereas|which|who)\b/i.test(v))return false;try{if(NLP&&NLP(v).verbs().out('array').length&&!/^\w+ing\b/i.test(v))return false}catch(e){}return true}
+function buildSentence(){var fields=[['WHAT',document.getElementById('whatInput').value.trim()],['DEVELOPMENT 1',document.getElementById('dev1Input').value.trim()],['DEVELOPMENT 2',document.getElementById('dev2Input').value.trim()],['SO WHAT',document.getElementById('soInput').value.trim()]],bad=fields.filter(function(x){return !validNounPhrase(x[1])}),check=document.getElementById('sentenceCheck');if(bad.length){check.className='check on';check.innerHTML='<div class="bad">先改字段，不生成假句子：'+bad.map(function(x){return esc(x[0])}).join('、')+' 需要填名词短语，不要填完整句。</div><div class="warn">示例：the discovery of penicillin / Fleming’s accidental observation / later mass production / its impact on modern medicine</div>';document.getElementById('sentenceOut').textContent='The passage discusses ______ with ______ and ______, highlighting ______.';return}var w=fields[0][1],d1=fields[1][1],d2=fields[2][1],so=fields[3][1],t=document.getElementById('template').value,s;if(t==='safe')s='The passage discusses '+w+' with '+d1+' and '+d2+', highlighting '+so+'.';else if(t==='while')s='While '+d1+', the passage discusses '+w+', as '+d2+', thereby highlighting '+so+'.';else if(t==='which')s='The passage discusses '+w+', which involves '+d1+' and '+d2+', ultimately highlighting '+so+'.';else if(t==='with')s='The passage discusses '+w+' with '+d1+' and '+d2+', which highlights '+so+'.';else s='The passage discusses '+w+', covering '+d1+' and '+d2+', which highlights '+so+'.';document.getElementById('sentenceOut').textContent=s;check.className='check on';check.innerHTML='<div class="ok">字段检查通过，可以再读一遍确认主句只有一个。</div>'}
 function checkAnswer(){var a=document.getElementById('answer').value.trim();var w=tokenize(a).length,fullStops=(a.match(/[.!?]/g)||[]).length,issues=[];if(!a)issues.push(['bad','没有检测到答案。']);if(fullStops>1)issues.push(['bad','整段出现了多个句末标点。SWT 必须是完整的一句话。']);if(w<5||w>75)issues.push(['bad','词数 '+w+'，不在 5-75 范围内。']);else if(w>=35&&w<=55)issues.push(['ok','词数 '+w+'，在推荐的 35-55 词区间。']);else issues.push(['warn','词数 '+w+'，形式合格；为了降低语法风险，可以继续压缩到 35-55。']);if(/,\s*(however|therefore|moreover|furthermore|in addition|also|thus|consequently)\b/i.test(a))issues.push(['bad','逗号后直接跟 however / therefore / also 等副词。这里要改成分号或新句子。']);if(/\bare\s+(go|come|make|take|give|improve|increase|decrease|show|suggest|allow|provide|help|create|lead|cause)\b/i.test(a))issues.push(['bad','检测到 are + 动词原形，检查 be 动词后面的形式。']);if(/\bbecause\s+[A-Z]/.test(a))issues.push(['bad','句中 because 后面的单词不应大写。']);var clauseMarkers=(a.match(/\b(because|although|though|while|whereas|which|who|that|since|as|if)\b/gi)||[]).length;if(clauseMarkers>=3)issues.push(['bad','复杂句连接点有 '+clauseMarkers+' 个。你的高风险点在复杂句，建议改成“最稳”模板：一个主句 + with + highlighting。']);else if(clauseMarkers===2)issues.push(['warn','复杂句连接点有 2 个，结构已经偏长。先确认每个连接词后面的成分完整。']);var commas=(a.match(/,/g)||[]).length;if(commas>=4)issues.push(['warn','逗号有 '+commas+' 个。先删插入语和重复解释，再检查有没有逗号拼接。']);if(a&&a[0]!==a[0].toUpperCase())issues.push(['warn','首字母建议大写。']);var out=document.getElementById('checkOut');out.className='check on';out.innerHTML=issues.map(function(x){return '<div class="'+x[0]+'">'+esc(x[1])+'</div>'}).join('')}
 function getKey(){var k=localStorage.getItem('ds_key')||'';if(k)return k;k=(prompt('粘贴 DeepSeek API Key。Key 只保存在当前浏览器。','')||'').trim();if(k)localStorage.setItem('ds_key',k);return k}
 async function aiCompress(){var src=document.getElementById('source').value.trim(),key=getKey();if(!src){alert('先粘贴文章');return}if(!key){return}document.getElementById('sentenceOut').textContent='正在按双保险模板压缩...';var sys='你是PTE SWT教师。按WHAT-DEVELOPMENT-SO WHAT分析，并写出一句35-55词的安全摘要。只能有一个完整主句，连接词只使用 while/although/as/which/with/thereby + doing。禁止逗号+however/therefore/also。中文说明不超过五条，英文答案一行。';var user='文章：'+src+'\n请输出：1 WHAT 2 DEVELOPMENT 3 SO WHAT 4 一句摘要 5 语法风险。';try{var r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:.2,max_tokens:1400})});var d=await r.json();document.getElementById('sentenceOut').textContent=d.choices&&d.choices[0]?d.choices[0].message.content:'没有返回内容'}catch(e){document.getElementById('sentenceOut').textContent='请求失败：'+e.message}}
@@ -171,6 +204,7 @@ function renderBank(){var list=bankFiltered(),sel=document.getElementById('bankS
 function showBank(code){var item=BANK.find(function(x){return x.code===code}),box=document.getElementById('bankAnswer');if(!item){box.innerHTML='<span class="label">选择题目后在这里查看范文</span>';return}box.innerHTML='<div class="label">'+esc(item.code+' · '+item.title)+'</div><div class="content" style="white-space:pre-wrap;font-weight:500">'+esc(item.answer)+'</div><div class="counter">'+item.answer.split(/\s+/).filter(Boolean).length+' 词</div>'}
 document.getElementById('readerBtn').onclick=showReader;document.getElementById('keywordsBtn').onclick=extract;document.getElementById('fillBtn').onclick=fillTemplate;document.getElementById('buildBtn').onclick=buildSentence;document.getElementById('copyBtn').onclick=function(){navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('sentenceOut').textContent)};document.getElementById('checkBtn').onclick=checkAnswer;document.getElementById('aiBtn').onclick=aiCompress;
 document.getElementById('bankSearch').oninput=renderBank;document.getElementById('bankSelect').onchange=function(){showBank(this.value)};document.getElementById('bankToCheck').onclick=function(){var item=BANK.find(function(x){return x.code===document.getElementById('bankSelect').value});if(item){document.getElementById('answer').value=item.answer;checkAnswer()}};
+document.getElementById('bankToExtract').onclick=function(){var item=BANK.find(function(x){return x.code===document.getElementById('bankSelect').value});if(item){document.getElementById('source').value=item.answer;extract()}};
 document.getElementById('prevSentence').onclick=function(){if(SIDX>0){SIDX--;renderReader()}};document.getElementById('nextSentence').onclick=function(){if(SIDX<SENTENCES.length-1){SIDX++;renderReader()}};
 document.getElementById('tabs').onclick=function(e){if(e.target.tagName!=='BUTTON')return;var t=e.target.dataset.t;document.querySelectorAll('#tabs button').forEach(function(b){b.className=b.dataset.t===t?'on':''});document.getElementById('swtView').classList.toggle('hidden',t!=='swt');document.getElementById('peelView').classList.toggle('hidden',t!=='peel')};
 document.getElementById('keywordPanel').onclick=function(e){var chip=e.target.closest&&e.target.closest('.chip');if(!chip)return;var kind=chip.dataset.kind,value=chip.textContent;if(kind==='what'){document.getElementById('whatText').textContent=value;document.getElementById('whatInput').value=value}else if(kind==='so'){document.getElementById('soText').textContent=value;document.getElementById('soInput').value=value}else if(kind==='dev'){document.getElementById('devText').textContent=value;if(!document.getElementById('dev1Input').value||document.getElementById('dev1Input').value===CANDIDATES.dev[0])document.getElementById('dev1Input').value=value;else document.getElementById('dev2Input').value=value}buildSentence()};
