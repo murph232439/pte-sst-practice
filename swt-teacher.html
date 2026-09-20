@@ -40,8 +40,7 @@ textarea:focus,input:focus{border-color:#2456a6}
 footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
 @media(min-width:720px){.blocks{grid-template-columns:1fr 1fr 1fr}.rules{grid-template-columns:1fr 1fr}}
 </style>
-<script src="we-teacher-gate.js?v=20260920c"></script>
-<script src="swt-bank.js?v=20260920c"></script>
+<script src="swt-bank.js?v=20260921c"></script>
 </head><body>
 <header>
 <h1>SWT 阅读辅助与一句摘要</h1>
@@ -90,6 +89,7 @@ footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
       <div class="block"><div class="label">WHAT 主体/话题</div><div class="content" id="whatText">-</div><div class="chips" id="whatChips"></div></div>
       <div class="block"><div class="label">DEVELOPMENT 关键发展</div><div class="content" id="devText">-</div><div class="chips" id="devChips"></div></div>
       <div class="block"><div class="label">SO WHAT 影响/意义</div><div class="content" id="soText">-</div><div class="chips" id="soChips"></div></div>
+      <div class="block"><div class="label">原句关键片段（固定搭配不拆开）</div><div class="chips" id="clauseChips"></div></div>
     </div>
     <div class="row"><button class="btn" id="fillBtn">填入候选（需检查）</button></div>
   </div>
@@ -156,8 +156,8 @@ function cleanCandidate(s){return s.trim().replace(/^(the|a|an|this|these|those|
 function candidatePhrases(sentence,nlp){var out=[];if(!nlp)return out;try{out=out.concat(nlp(sentence).nouns().out('array'));out=out.concat(nlp(sentence).topics().out('array'))}catch(e){}var seen={};return out.map(cleanCandidate).filter(function(x){var words=tokenize(x);if(!x||words.length<1||words.length>7)return false;if(words.every(function(w){return STOP.has(w)}))return false;if(words.length===1&&/’s$|'s$/i.test(x))return false;var k=x.toLowerCase();if(seen[k])return false;seen[k]=1;return true})}
 function rankCandidate(x){var t=tokenize(x),score=0;t.forEach(function(w){if(IMPACT.has(w))score+=3;if(GENERIC.has(w))score-=4;if(/\d/.test(w))score+=2});if(t.length>=2)score+=1;if(t.length>=4)score+=1;return score}
 function rankList(items){return items.map(function(x,i){return {x:x,i:i}}).sort(function(a,b){return rankCandidate(b.x)-rankCandidate(a.x)||a.i-b.i}).map(function(row){return row.x})}
-function phraseScore(text){var t=tokenize(text),freq={},i;t.forEach(function(w){if(!STOP.has(w)&&w.length>2)freq[w]=(freq[w]||0)+1});var phrases={};for(i=0;i<t.length;i++){for(var n=2;n<=3;n++){var a=t.slice(i,i+n);if(a.length<n)continue;if(STOP.has(a[0])||STOP.has(a[n-1]))continue;var p=a.join(' ');phrases[p]=(phrases[p]||0)+a.reduce(function(s,w){return s+(freq[w]||0)},0)+1}}return Object.keys(phrases).sort(function(a,b){return phrases[b]-phrases[a]})}
 function firstPhrases(sentence,limit,nlp){return candidatePhrases(sentence,nlp).slice(0,limit||3)}
+function clauseCandidates(sentences){var out=[];sentences.forEach(function(sentence){sentence.replace(/[.!?]+$/,'').split(/\s*,\s*|\s*;\s*|\s+(?=(?:because|although|though|while|whereas|which|who|that|since|but|so)\b)/i).forEach(function(part){part=part.trim().replace(/^(and|but|so)\s+/i,'');var count=tokenize(part).length;if(count>=3&&count<=18)out.push(part)})});return Array.from(new Set(out)).slice(0,6)}
 function showReader(){SENTENCES=splitSentences(document.getElementById('source').value).map(function(s){return s.trim()}).filter(Boolean);SIDX=0;document.getElementById('readerPanel').classList.remove('hidden');renderReader()}
 function renderReader(){var s=SENTENCES[SIDX]||'';var out=esc(s);KEYWORDS.slice(0,8).forEach(function(k){out=out.replace(new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','ig'),'<mark>$&</mark>')});document.getElementById('readerText').innerHTML=out||'没有可显示的句子';document.getElementById('readerCounter').textContent=(SIDX+1)+' / '+SENTENCES.length}
 async function extract(){
@@ -168,8 +168,6 @@ async function extract(){
   var first,dev,last;
   if(s.length===1){
     var pool=firstPhrases(s[0],20,nlp);
-    var fallback=phraseScore(s[0]).map(cleanCandidate).filter(function(x){return x&&tokenize(x).length>=2});
-    pool=Array.from(new Set(pool.concat(fallback)));
     first=pool.slice(0,2);
     dev=pool.slice(2,5);
     last=pool.slice(-2);
@@ -190,6 +188,7 @@ async function extract(){
   renderCandidates('what',first,'whatText','whatChips');
   renderCandidates('dev',dev,'devText','devChips');
   renderCandidates('so',last,'soText','soChips');
+  document.getElementById('clauseChips').innerHTML=clauseCandidates(s).map(function(x){return '<span class="chip">'+esc(x)+'</span>'}).join('');
   renderReader();
 }
 function renderCandidates(kind,items,textId,chipId){var text=document.getElementById(textId),chips=document.getElementById(chipId);text.textContent=items[0]||'-';chips.innerHTML=items.slice(1).map(function(x,i){return '<span class="chip" data-kind="'+kind+'" data-index="'+(i+1)+'">'+esc(x)+'</span>'}).join('')}

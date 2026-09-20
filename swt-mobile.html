@@ -1,0 +1,71 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2456a6">
+<title>SWT 随行一句练</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;background:#f4f6f9;color:#1f2430;font-size:15px;line-height:1.6}
+header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e3e7ee;padding:12px 16px 10px}
+h1{font-size:17px;color:#2456a6;margin-bottom:6px}.nav{font-size:13px}.nav a{color:#2456a6;text-decoration:none;font-weight:650}
+main{padding:14px 16px 60px;max-width:720px;margin:0 auto}
+.panel{background:#fff;border:1px solid #e4e8ef;border-radius:10px;padding:15px;margin-bottom:12px}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.counter{font-size:12.5px;color:#8b93a3}
+.title{font-size:18px;font-weight:700;margin:5px 0 10px}.code{font-size:12px;color:#8b93a3}
+.zh{padding:12px;border-radius:9px;background:#f5f8fd;border-left:4px solid #2456a6;font-size:15.5px;line-height:1.75}
+.label{font-size:12.5px;color:#7f8898;margin:12px 0 5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:5px 9px;border-radius:14px;background:#eef3fb;color:#2456a6;font-size:13px}
+.chip small{display:block;color:#7b8494;font-size:10.5px;line-height:1.2}
+textarea{width:100%;min-height:150px;padding:11px;border:1px solid #d8dde6;border-radius:9px;font:inherit;line-height:1.7;outline:0;resize:vertical}
+textarea:focus{border-color:#2456a6}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.btn{border:0;border-radius:9px;padding:11px 15px;font-size:14px;font-weight:700;background:#2456a6;color:#fff;cursor:pointer}
+.btn.ghost{background:#eef3fb;color:#2456a6}.btn.next{background:#1b7a4b}.btn:disabled{opacity:.55}
+.status{display:flex;justify-content:space-between;font-size:12.5px;color:#8b93a3;margin-top:5px}.status .ok{color:#1b7a4b}.status .bad{color:#c74747}
+.feedback{display:none;margin-top:11px;padding:12px;border:1px solid #e2e7ef;border-radius:9px;background:#fbfcfe;white-space:pre-wrap;line-height:1.75}
+.feedback.on{display:block}.reference{display:none;margin-top:11px;padding:12px;border-radius:9px;background:#f1fbf5;border:1px solid #bfe3ce}
+.reference.on{display:block}.reference b{color:#1b7a4b}.refText{margin-top:5px;white-space:pre-wrap}
+footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
+</style>
+<script src="swt-mobile-bank.js?v=20260921c"></script>
+</head><body>
+<header><h1>SWT 随行一句练</h1><div class="nav"><a href="we-entry.html">← WE 教师入口</a> <span style="color:#d0d5dc">|</span> <a href="swt-teacher.html">完整 SWT 工具</a></div></header>
+<main>
+  <div class="panel">
+    <div class="top"><span class="counter" id="counter"></span><span class="code" id="code"></span></div>
+    <div class="title" id="title"></div>
+    <div class="label">中文提示</div>
+    <div class="zh" id="zh"></div>
+    <div class="label">关键词组</div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="panel">
+    <div class="label">你的 SWT 一句话（目标 35-55 词）</div>
+    <textarea id="answer" placeholder="只写一句话..."></textarea>
+    <div class="status"><span id="words">0 词</span><span id="form"></span></div>
+    <div class="row">
+      <button class="btn" id="aiBtn">AI 批改</button>
+      <button class="btn ghost" id="refBtn">看范文</button>
+      <button class="btn ghost" id="clearBtn">重写</button>
+      <button class="btn next" id="nextBtn">下一题 →</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="reference" id="reference"><b>参考答案</b><div class="refText" id="refText"></div></div>
+  </div>
+</main>
+<footer>教师专用 · 题库来源：新东方 9 月 PTE 题库</footer>
+<script>
+var BANK=window.SWT_MOBILE_BANK||[],ORDER=[],IDX=0;
+function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function words(s){return (s||'').match(/[A-Za-z][A-Za-z'’-]*/g)||[]}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
+function current(){return BANK[ORDER[IDX]]}
+function render(){var item=current();if(!item)return;document.getElementById('counter').textContent='第 '+(IDX+1)+' / '+ORDER.length+' 题';document.getElementById('code').textContent=item.code;document.getElementById('title').textContent=item.title;document.getElementById('zh').textContent=item.zh;document.getElementById('chips').innerHTML=item.phrases.map(function(p){return '<span class="chip">'+esc(p.en)+'<small>'+esc(p.zh)+'</small></span>'}).join('');document.getElementById('answer').value='';document.getElementById('feedback').className='feedback';document.getElementById('feedback').textContent='';document.getElementById('reference').className='reference';document.getElementById('refText').textContent=item.answer;update();window.scrollTo({top:0,behavior:'smooth'})}
+function update(){var a=document.getElementById('answer').value,n=words(a).length,stops=(a.match(/[.!?]/g)||[]).length;document.getElementById('words').textContent=n+' 词';var f=document.getElementById('form');if(!a.trim()){f.textContent='';f.className=''}else if(stops>1){f.textContent='有多个句末标点';f.className='bad'}else if(n>=35&&n<=55){f.textContent='单句形式与词数达标';f.className='ok'}else{f.textContent='形式合格，建议压到 35-55 词';f.className=''}}
+function getKey(){var k=localStorage.getItem('ds_key')||'';if(k)return k;k=(prompt('粘贴 DeepSeek API Key。Key 只保存在当前浏览器。','')||'').trim();if(k)localStorage.setItem('ds_key',k);return k}
+function localCheck(a,item){var n=words(a).length,stops=(a.match(/[.!?]/g)||[]).length,hits=item.phrases.filter(function(p){var t=(p.en||'').toLowerCase().split(/\s+/).filter(Boolean);return t.length&&t.every(function(w){return a.toLowerCase().indexOf(w)>=0})}).length;return {words:n,sentences:stops,hits:hits,total:item.phrases.length}}
+async function aiGrade(){var a=document.getElementById('answer').value.trim(),item=current(),fb=document.getElementById('feedback');if(!a){fb.className='feedback on';fb.textContent='先写一句话再批改。';return}var key=getKey();if(!key)return;var local=localCheck(a,item);fb.className='feedback on';fb.textContent='正在批改...';var sys='你是PTE SWT教师。使用学生的中文提示、关键词和参考答案进行批改。先给一句具体肯定，再按“内容覆盖 / 语法与单句形式 / 推荐版本”反馈。必须指出是否只有一个完整句子、是否在35-55词附近、是否有复杂句风险。中文讲解，英文举例，语气鼓励，不要空泛，不用“不是...而是...”句式。';var user='题目：'+item.title+'\n中文提示：'+item.zh+'\n关键词：'+item.phrases.map(function(p){return p.en}).join('; ')+'\n参考答案：'+item.answer+'\n学生答案：'+a+'\n本地检查：'+JSON.stringify(local);try{var r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:.3,max_tokens:1600})});var d=await r.json();fb.textContent=d.choices&&d.choices[0]?d.choices[0].message.content:('接口错误：'+((d.error&&d.error.message)||'没有返回内容'))}catch(e){fb.textContent='请求失败：'+e.message+'\n本地检查：单句 '+local.sentences+' 个，'+local.words+' 词，关键词覆盖 '+local.hits+'/'+local.total+'.'}}
+function next(){IDX=(IDX+1)%ORDER.length;render()}
+document.getElementById('answer').addEventListener('input',update);document.getElementById('aiBtn').onclick=aiGrade;document.getElementById('refBtn').onclick=function(){document.getElementById('reference').classList.toggle('on')};document.getElementById('clearBtn').onclick=function(){document.getElementById('answer').value='';document.getElementById('feedback').className='feedback';document.getElementById('reference').className='reference';update()};document.getElementById('nextBtn').onclick=next;
+ORDER=shuffle(BANK.map(function(_,i){return i}));render();
+</script>
+</body></html>
