@@ -1,0 +1,285 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>WE 理由句碎片练习</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:#f4f6f9;color:#1f2430;font-size:16px;line-height:1.65}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e3e7ee;padding:12px 14px 10px;z-index:10}
+h1{font-size:16.5px;color:#2456a6;margin-bottom:8px}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;padding:10px 0;border-radius:11px;border:1px solid #d8dde6;background:#fff;font-size:14px;font-weight:600;color:#667}
+.tabs button.on{background:#2456a6;border-color:#2456a6;color:#fff}
+main{padding:14px}
+.scenes{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.scenes button{padding:7px 13px;border-radius:16px;border:1px solid #d8dde6;background:#fff;font-size:13px;font-weight:600;color:#667}
+.scenes button.on{background:#eef3fb;border-color:#2456a6;color:#2456a6}
+.rc{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:9px;box-shadow:0 1px 2px rgba(20,30,50,.06)}
+.rc .zh{font-size:15.5px;color:#1f2430}
+.rc .en{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #dfe4ec;font-size:15.5px;color:#1b7a4b;font-weight:600}
+.rc.on .en{display:block}
+.rc .tip{font-size:12px;color:#b6bcc7;margin-top:4px}
+.quiz{background:#fff;border-radius:12px;padding:20px 16px;box-shadow:0 1px 2px rgba(20,30,50,.06);text-align:center}
+.quiz .zh{font-size:18px;line-height:1.7;font-weight:500;margin-bottom:6px}
+.quiz .en{display:none;margin-top:14px;padding-top:14px;border-top:1px solid #eef1f6;font-size:17px;color:#1b7a4b;font-weight:600;line-height:1.7}
+.quiz.on .en{display:block}
+.quiz .meta{font-size:12.5px;color:#98a0ae;margin-top:10px}
+.btns{display:flex;gap:10px;margin-top:16px}
+.btns button{flex:1;border:0;border-radius:12px;padding:14px 0;font-size:16px;font-weight:600;background:#2456a6;color:#fff}
+.btns button.ghost{background:#eef3fb;color:#2456a6}
+footer{text-align:center;color:#b6bcc7;font-size:12px;padding:16px 0 26px}
+</style></head><body>
+<header>
+<h1>WE 理由句碎片练习</h1>
+<div class="tabs" id="tabs"><button class="on" data-m="lib">场景理由库</button><button data-m="quiz">翻译速练</button></div>
+</header>
+<main id="main"></main>
+<footer>理由句可套用到同场景任意题目 · 中文提示 → 想英文 → 点开核对</footer>
+<script>
+var R={
+ "教育 Education": [
+  [
+   "It helps students acquire knowledge and practical skills.",
+   "帮助学生获取知识和实用技能"
+  ],
+  [
+   "It prepares students for their future careers.",
+   "为学生的未来职业做准备"
+  ],
+  [
+   "It encourages critical thinking and problem-solving.",
+   "鼓励批判性思维和解决问题"
+  ],
+  [
+   "It promotes personal growth and confidence.",
+   "促进个人成长和自信"
+  ],
+  [
+   "It improves students' competitiveness in the job market.",
+   "提升学生在就业市场的竞争力"
+  ],
+  [
+   "It helps bridge the gap between different social groups.",
+   "帮助缩小不同社会群体之间的差距"
+  ],
+  [
+   "It adds extra burden to students.",
+   "给学生增加额外负担"
+  ],
+  [
+   "It may lead to unequal distribution of educational resources.",
+   "可能导致教育资源分配不均"
+  ]
+ ],
+ "科技 Technology": [
+  [
+   "It greatly improves efficiency and saves time.",
+   "大幅提高效率、节省时间"
+  ],
+  [
+   "It makes communication much easier and faster.",
+   "让沟通更便捷快速"
+  ],
+  [
+   "It reduces the need for repetitive human labour.",
+   "减少重复性人力劳动"
+  ],
+  [
+   "It gives people access to a huge amount of information.",
+   "让人们获取海量信息"
+  ],
+  [
+   "It may cause people to rely too much on devices.",
+   "可能导致人们过度依赖设备"
+  ],
+  [
+   "It could replace workers and increase unemployment.",
+   "可能取代工人、增加失业"
+  ],
+  [
+   "It raises concerns about privacy and data security.",
+   "引发隐私和数据安全的担忧"
+  ]
+ ],
+ "工作与职业 Work & Career": [
+  [
+   "It improves employees' job satisfaction and motivation.",
+   "提升员工的工作满意度和积极性"
+  ],
+  [
+   "It helps people achieve a better work-life balance.",
+   "帮助人们实现更好的工作生活平衡"
+  ],
+  [
+   "It increases productivity and benefits the company.",
+   "提高生产力，让公司受益"
+  ],
+  [
+   "It reduces stress and improves mental health.",
+   "减少压力、改善心理健康"
+  ],
+  [
+   "It offers more opportunities for career development.",
+   "提供更多职业发展机会"
+  ],
+  [
+   "Long working hours may harm people's physical health.",
+   "长时间工作可能损害身体健康"
+  ],
+  [
+   "It may reduce the time people spend with their families.",
+   "可能减少与家人相处的时间"
+  ]
+ ],
+ "城市与交通 City & Transport": [
+  [
+   "It helps reduce traffic congestion in city centres.",
+   "帮助减少市中心的交通拥堵"
+  ],
+  [
+   "It provides more convenient and affordable options for commuters.",
+   "为通勤者提供更便利、更实惠的选择"
+  ],
+  [
+   "It can reduce air pollution caused by private cars.",
+   "减少私家车造成的空气污染"
+  ],
+  [
+   "It improves the quality of urban life.",
+   "提高城市生活质量"
+  ],
+  [
+   "It requires a large amount of government investment.",
+   "需要大量政府投资"
+  ],
+  [
+   "Overcrowding puts pressure on public facilities.",
+   "过度拥挤给公共设施带来压力"
+  ]
+ ],
+ "环境 Environment": [
+  [
+   "It helps protect natural resources for future generations.",
+   "为后代保护自然资源"
+  ],
+  [
+   "It reduces pollution and slows down climate change.",
+   "减少污染、减缓气候变化"
+  ],
+  [
+   "It raises public awareness of environmental issues.",
+   "提高公众的环保意识"
+  ],
+  [
+   "It may increase costs for companies and consumers.",
+   "可能增加企业和消费者的成本"
+  ],
+  [
+   "Human activities are the main cause of global warming.",
+   "人类活动是全球变暖的主要原因"
+  ]
+ ],
+ "体育与健康 Sports & Health": [
+  [
+   "It improves physical fitness and overall health.",
+   "提高身体素质、改善健康"
+  ],
+  [
+   "It helps people relieve stress and relax.",
+   "帮助人们减压放松"
+  ],
+  [
+   "It builds teamwork and communication skills.",
+   "培养团队合作和沟通能力"
+  ],
+  [
+   "It encourages a sense of discipline and perseverance.",
+   "培养自律和坚持的精神"
+  ],
+  [
+   "It may increase the risk of injury.",
+   "可能增加受伤的风险"
+  ],
+  [
+   "Extreme sports are dangerous, but they build courage.",
+   "极限运动危险，但能培养勇气"
+  ],
+  [
+   "An unhealthy lifestyle leads to serious health problems.",
+   "不健康的生活方式会导致严重的健康问题"
+  ]
+ ],
+ "社会与文化 Society & Culture": [
+  [
+   "It promotes equality and social justice.",
+   "促进平等和社会公正"
+  ],
+  [
+   "It strengthens relationships between different groups.",
+   "加强不同群体之间的关系"
+  ],
+  [
+   "It helps preserve cultural heritage and identity.",
+   "帮助保存文化遗产和身份认同"
+  ],
+  [
+   "It may cause social conflicts and misunderstanding.",
+   "可能导致社会冲突和误解"
+  ],
+  [
+   "It puts pressure on public services and housing.",
+   "给公共服务和住房带来压力"
+  ]
+ ],
+ "艺术与人文 Arts & Humanities": [
+  [
+   "It helps people understand different cultures and values.",
+   "帮助人们理解不同的文化和价值观"
+  ],
+  [
+   "It develops creativity and imagination.",
+   "培养创造力和想象力"
+  ],
+  [
+   "It enriches people's spiritual life.",
+   "丰富人们的精神生活"
+  ],
+  [
+   "It may be less useful for finding a job.",
+   "可能对找工作帮助不大"
+  ],
+  [
+   "It deserves public funding because it preserves history.",
+   "值得公共资助，因为它保存历史"
+  ]
+ ]
+};
+var scenes=Object.keys(R), SC=scenes[0], MODE='lib', QI=null;
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function allPairs(){var a=[];scenes.forEach(s=>R[s].forEach(p=>a.push({s:s,en:p[0],zh:p[1]})));return a}
+function render(){
+ if(MODE==='lib'){
+   var h='<div class="scenes">'+scenes.map(s=>'<button data-s="'+esc(s)+'" class="'+(s===SC?'on':'')+'">'+esc(s)+'</button>').join('')+'</div>';
+   h+=R[SC].map(p=>'<div class="rc"><div class="zh">'+esc(p[1])+'</div><div class="en">'+esc(p[0])+'</div><div class="tip">点一下看英文</div></div>').join('');
+   document.getElementById('main').innerHTML=h;
+   document.querySelectorAll('.scenes button').forEach(b=>b.onclick=()=>{SC=b.dataset.s;render()});
+ } else {
+   var p=QI||(QI=allPairs()[Math.floor(Math.random()*allPairs().length)]);
+   var h='<div class="quiz" id="q"><div class="zh">'+esc(p.zh)+'</div><div class="en">'+esc(p.en)+'</div><div class="meta">场景：'+esc(p.s)+'</div></div>'+
+   '<div class="btns"><button class="ghost" id="show">显示英文</button><button id="next">换一条</button></div>';
+   document.getElementById('main').innerHTML=h;
+   document.getElementById('show').onclick=()=>document.getElementById('q').classList.add('on');
+   document.getElementById('next').onclick=()=>{QI=null;render()};
+ }
+}
+document.getElementById('tabs').onclick=function(e){
+ if(e.target.tagName!=='BUTTON')return;
+ MODE=e.target.dataset.m;
+ document.getElementById('tabs').querySelectorAll('button').forEach(b=>b.className=(b.dataset.m===MODE?'on':''));
+ QI=null; render();
+};
+// 点理由卡展开英文
+document.getElementById('main').onclick=function(e){
+ var c=e.target.closest?e.target.closest('.rc'):null;
+ if(c&&MODE==='lib')c.classList.toggle('on');
+};
+render();
+</script></body></html>
