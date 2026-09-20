@@ -62,7 +62,7 @@ function fallbackSpeech(rate,text){
 }
 function stopAudio(){if(AUDIO){try{AUDIO.pause()}catch(e){}}if(window.speechSynthesis)window.speechSynthesis.cancel()}
 function prepareAudio(){
-  if(!AUDIO){AUDIO=new Audio(SPRITE_URL);AUDIO.preload='auto';AUDIO.load()}
+  if(!AUDIO){AUDIO=new Audio(SPRITE_URL);AUDIO.preload='auto';AUDIO.volume=.5;AUDIO.load()}
   return AUDIO;
 }
 function speak(rate){
