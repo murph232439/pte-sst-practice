@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2456a6">
+<title>SWT 教师阅读与一句摘要工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;background:#f4f6f9;color:#1f2430;font-size:15px;line-height:1.65}
+header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e3e7ee;padding:11px 16px 9px;z-index:10}
+h1{font-size:16px;color:#2456a6;margin-bottom:7px}
+.nav{font-size:13px;margin-bottom:8px}.nav a{color:#2456a6;text-decoration:none;font-weight:650}
+.tabs{display:flex;gap:6px}.tabs button{flex:1;padding:9px 0;border-radius:9px;border:1px solid #d8dde6;background:#fff;font-size:14px;font-weight:650;color:#667;cursor:pointer}
+.tabs button.on{background:#2456a6;border-color:#2456a6;color:#fff}
+main{padding:14px 16px 60px;max-width:900px;margin:0 auto}
+.panel{background:#fff;border:1px solid #e4e8ef;border-radius:10px;padding:15px;margin-bottom:12px}
+.panel h2{font-size:16px;color:#2456a6;margin-bottom:8px}
+.panel h3{font-size:14px;margin:12px 0 6px}
+.hint{font-size:13px;color:#7b8494;margin-bottom:10px}
+textarea{width:100%;min-height:190px;border:1px solid #d8dde6;border-radius:9px;padding:11px;font:inherit;line-height:1.7;resize:vertical;outline:0}
+textarea:focus,input:focus{border-color:#2456a6}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.btn{border:0;border-radius:9px;padding:10px 15px;font-size:14px;font-weight:700;background:#2456a6;color:#fff;cursor:pointer}
+.btn.ghost{background:#eef3fb;color:#2456a6}.btn:disabled{opacity:.55}
+.reader{margin-top:12px;padding:15px;border:1px solid #dfe5ed;border-radius:10px;background:#fbfcfe;font-size:19px;line-height:1.8;min-height:105px}
+.reader mark{background:#fff0a8;color:#1f2430;border-radius:3px;padding:0 2px}
+.counter{font-size:12.5px;color:#8b93a3;margin-top:8px}
+.blocks{display:grid;grid-template-columns:1fr;gap:9px;margin-top:10px}
+.block{border:1px solid #e2e7ef;border-radius:9px;padding:11px;background:#fafbfd}
+.label{font-size:12px;color:#7f8898;margin-bottom:4px}.content{font-weight:650}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.chip{display:inline-block;padding:3px 9px;border-radius:14px;background:#eef3fb;color:#2456a6;font-size:12.5px}
+.field{margin-top:9px}.field label{display:block;font-size:12.5px;color:#6e7787;margin-bottom:4px}
+.field input,.field select{width:100%;border:1px solid #d8dde6;border-radius:9px;padding:10px;font:inherit;outline:0}
+.out{margin-top:12px;padding:12px;border-left:4px solid #2456a6;background:#f5f8fd;border-radius:7px;font-size:16px;line-height:1.75}
+.check{display:none;margin-top:11px;padding:11px;border-radius:9px;background:#fbfcfe;border:1px solid #e2e7ef}
+.check.on{display:block}.ok{color:#1b7a4b}.bad{color:#c74747}.warn{color:#9a6800}
+.rules{display:grid;grid-template-columns:1fr;gap:9px}
+.rule{border:1px solid #e2e7ef;border-radius:9px;padding:11px;background:#fafbfd}
+.rule b{color:#2456a6}
+.hidden{display:none}
+footer{text-align:center;color:#b6bcc7;font-size:12px;padding:20px 0 30px}
+@media(min-width:720px){.blocks{grid-template-columns:1fr 1fr 1fr}.rules{grid-template-columns:1fr 1fr}}
+</style>
+<script src="we-teacher-gate.js?v=20260920c"></script>
+</head><body>
+<header>
+<h1>SWT 阅读辅助与一句摘要</h1>
+<div class="nav"><a href="we-entry.html">← WE 教师入口</a> <span style="color:#d0d5dc">|</span> <a href="https://liuxue.koolearn.com/pte/write/" target="_blank" rel="noreferrer">新东方 SWT 题库</a></div>
+<div class="tabs" id="tabs"><button class="on" data-t="swt">SWT 工具</button><button data-t="peel">WE / PEEL</button></div>
+</header>
+<main>
+<section id="swtView">
+  <div class="panel">
+    <h2>先放文章</h2>
+    <div class="hint">可以直接从新东方链接复制文章，也可以粘贴任意 SWT 材料。先按“逐句显示”，一次只看一句。</div>
+    <textarea id="source" placeholder="把 SWT 原文粘贴到这里..."></textarea>
+    <div class="row"><button class="btn" id="readerBtn">逐句显示</button><button class="btn ghost" id="keywordsBtn">找关键词</button><button class="btn ghost" id="aiBtn">AI 按模板压缩</button></div>
+  </div>
+
+  <div class="panel hidden" id="readerPanel">
+    <h2>逐句阅读</h2>
+    <div class="reader" id="readerText"></div>
+    <div class="counter" id="readerCounter"></div>
+    <div class="row"><button class="btn ghost" id="prevSentence">上一句</button><button class="btn ghost" id="nextSentence">下一句</button></div>
+  </div>
+
+  <div class="panel hidden" id="keywordPanel">
+    <h2>候选信息</h2>
+    <div class="hint">这是阅读顺序提示，不是唯一答案。先选最像主线的一组，再进入下面的模板。</div>
+    <div class="blocks">
+      <div class="block"><div class="label">WHAT 主体/话题</div><div class="content" id="whatText">-</div><div class="chips" id="whatChips"></div></div>
+      <div class="block"><div class="label">DEVELOPMENT 关键发展</div><div class="content" id="devText">-</div><div class="chips" id="devChips"></div></div>
+      <div class="block"><div class="label">SO WHAT 影响/意义</div><div class="content" id="soText">-</div><div class="chips" id="soChips"></div></div>
+    </div>
+    <div class="row"><button class="btn" id="fillBtn">填入模板</button></div>
+  </div>
+
+  <div class="panel">
+    <h2>一句摘要组装器</h2>
+    <div class="hint">先按你的双保险模板把所有内容塞进一个主句，再检查语法。目标 35-55 词。</div>
+    <div class="field"><label>句型</label><select id="template">
+      <option value="double">双保险：discusses + covering + which</option>
+      <option value="while">While 让步型</option>
+      <option value="which">关系从句型</option>
+      <option value="with">With 伴随型</option>
+    </select></div>
+    <div class="field"><label>WHAT</label><input id="whatInput" placeholder="the main subject"></div>
+    <div class="field"><label>DEVELOPMENT 1</label><input id="dev1Input" placeholder="first key development"></div>
+    <div class="field"><label>DEVELOPMENT 2</label><input id="dev2Input" placeholder="second key development"></div>
+    <div class="field"><label>SO WHAT</label><input id="soInput" placeholder="impact, result or significance"></div>
+    <div class="row"><button class="btn" id="buildBtn">生成一句话</button><button class="btn ghost" id="copyBtn">复制</button></div>
+    <div class="out" id="sentenceOut">生成结果会显示在这里。</div>
+  </div>
+
+  <div class="panel">
+    <h2>语法防错检查</h2>
+    <textarea id="answer" placeholder="把你的 SWT 一句话放在这里..."></textarea>
+    <div class="row"><button class="btn" id="checkBtn">检查语法与形式</button></div>
+    <div class="check" id="checkOut"></div>
+  </div>
+</section>
+
+<section id="peelView" class="hidden">
+  <div class="panel">
+    <h2>WE 要不要按 PEEL 写</h2>
+    <p>主体段很适合用 PEEL，但整篇文章不是 PEEL 四段。推荐结构是：Introduction + Body 1 + Body 2 + Conclusion。每个主体段内部再走 PEEL。</p>
+  </div>
+  <div class="rules">
+    <div class="rule"><b>P - Point</b><br>第一句直接回答本段立场，不铺背景。</div>
+    <div class="rule"><b>E - Explain</b><br>解释这个观点为什么成立，最好用 because / this means。</div>
+    <div class="rule"><b>E - Evidence / Example</b><br>给一个具体例子、数据、经历或常见场景。</div>
+    <div class="rule"><b>L - Link</b><br>最后回到题目，说明这一段为什么支持你的总立场。</div>
+  </div>
+  <div class="panel">
+    <h2>WE 整篇骨架</h2>
+    <p><b>Introduction：</b>背景一句 + 明确立场一句。</p>
+    <p><b>Body 1：</b>Point → Explain → Example → Link。</p>
+    <p><b>Body 2：</b>Point → Explain → Example → Link。</p>
+    <p><b>Conclusion：</b>重申立场 + 收束两个理由，不引入新观点。</p>
+    <p style="margin-top:9px"><b>注意：</b>PEEL 是组织工具，不是官方评分项。不要为了凑 PEEL 把句子写长，清晰、扣题、展开充分更重要。</p>
+  </div>
+</section>
+</main>
+<footer>教师专用 · 资料逻辑来自你提供的 SWT 双保险与防语法错误模板</footer>
+<script>
+var SENTENCES=[],SIDX=0,KEYWORDS=[],NLP=null,CANDIDATES={what:[],dev:[],so:[]};
+var STOP=new Set('a an the and or but so because as while although though if when where which who that this these those it its they them their we our you your he she his her is are was were be been being have has had do does did to of in on at for from with by about into over under more most many much very also can could should would may might will not no than then there here what how why'.split(' '));
+var GENERIC=new Set('study studies research experiment experiments article passage text author speaker scientist scientists researcher researchers finding findings result results'.split(' '));
+var IMPACT=new Set('benefit benefits effect effects impact impacts result results recovery improvement increase decrease threat threatens risk risks significance outcome outcomes solution solutions change changes development developments'.split(' '));
+function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function splitSentences(text){return (text||'').replace(/\s+/g,' ').match(/[^.!?]+[.!?]?/g)||[]}
+function tokenize(text){return (text||'').toLowerCase().replace(/[’‘]/g,"'").match(/[a-z][a-z'-]*|\d+(?:\.\d+)?/g)||[]}
+async function ensureNlp(){if(NLP)return NLP;try{NLP=(await import('./compromise-three.mjs')).default}catch(e){NLP=null}return NLP}
+function cleanCandidate(s){return s.trim().replace(/^(the|a|an|this|these|those|its|their|his|her|our|some|several|many|most)\s+/i,'').replace(/[.,;:]+$/,'')}
+function candidatePhrases(sentence,nlp){var out=[];if(nlp){try{out=out.concat(nlp(sentence).nouns().out('array'));out=out.concat(nlp(sentence).topics().out('array'))}catch(e){}}out=out.concat(phraseScore(sentence));var seen={};return out.map(cleanCandidate).filter(function(x){var words=tokenize(x);if(!x||words.length<1||words.length>7)return false;if(words.every(function(w){return STOP.has(w)}))return false;var k=x.toLowerCase();if(seen[k])return false;seen[k]=1;return true})}
+function rankCandidate(x){var t=tokenize(x),score=0;t.forEach(function(w){if(IMPACT.has(w))score+=3;if(GENERIC.has(w))score-=4;if(/\d/.test(w))score+=2});if(t.length>=2)score+=1;if(t.length>=4)score+=1;return score}
+function rankList(items){return items.map(function(x,i){return {x:x,i:i}}).sort(function(a,b){return rankCandidate(b.x)-rankCandidate(a.x)||a.i-b.i}).map(function(row){return row.x})}
+function phraseScore(text){var t=tokenize(text),freq={},i;t.forEach(function(w){if(!STOP.has(w)&&w.length>2)freq[w]=(freq[w]||0)+1});var phrases={};for(i=0;i<t.length;i++){for(var n=2;n<=3;n++){var a=t.slice(i,i+n);if(a.length<n)continue;if(STOP.has(a[0])||STOP.has(a[n-1]))continue;var p=a.join(' ');phrases[p]=(phrases[p]||0)+a.reduce(function(s,w){return s+(freq[w]||0)},0)+1}}return Object.keys(phrases).sort(function(a,b){return phrases[b]-phrases[a]})}
+function firstPhrases(sentence,limit,nlp){return candidatePhrases(sentence,nlp).slice(0,limit||3)}
+function showReader(){SENTENCES=splitSentences(document.getElementById('source').value).map(function(s){return s.trim()}).filter(Boolean);SIDX=0;document.getElementById('readerPanel').classList.remove('hidden');renderReader()}
+function renderReader(){var s=SENTENCES[SIDX]||'';var out=esc(s);KEYWORDS.slice(0,8).forEach(function(k){out=out.replace(new RegExp('\\b'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','ig'),'<mark>$&</mark>')});document.getElementById('readerText').innerHTML=out||'没有可显示的句子';document.getElementById('readerCounter').textContent=(SIDX+1)+' / '+SENTENCES.length}
+async function extract(){var s=splitSentences(document.getElementById('source').value);if(!s.length)return;var nlp=await ensureNlp();var firstPool=firstPhrases(s[0],9,nlp),firstRaw=firstPool.slice(0,2),first=Array.from(new Set(firstRaw.concat(rankList(firstPool)).slice(0,5)));var last=rankList(firstPhrases(s[s.length-1],7,nlp)).slice(0,5),middle=[];for(var i=1;i<s.length-1;i++)middle=middle.concat(firstPhrases(s[i],5,nlp));var counts={};middle.forEach(function(x){counts[x]=(counts[x]||0)+1});middle=Object.keys(counts).sort(function(a,b){return (counts[b]-counts[a])||(rankCandidate(b)-rankCandidate(a))||middle.indexOf(a)-middle.indexOf(b)});var dev=middle.slice(0,6);CANDIDATES={what:first,dev:dev,so:last};KEYWORDS=first.slice(0,2).concat(dev.slice(0,3)).concat(last.slice(0,2));KEYWORDS=Array.from(new Set(KEYWORDS));document.getElementById('keywordPanel').classList.remove('hidden');renderCandidates('what',first,'whatText','whatChips');renderCandidates('dev',dev,'devText','devChips');renderCandidates('so',last,'soText','soChips');renderReader()}
+function renderCandidates(kind,items,textId,chipId){var text=document.getElementById(textId),chips=document.getElementById(chipId);text.textContent=items[0]||'-';chips.innerHTML=items.slice(1).map(function(x,i){return '<span class="chip" data-kind="'+kind+'" data-index="'+(i+1)+'">'+esc(x)+'</span>'}).join('')}
+function fillTemplate(){document.getElementById('whatInput').value=CANDIDATES.what[0]||'';document.getElementById('dev1Input').value=CANDIDATES.dev[0]||'';document.getElementById('dev2Input').value=CANDIDATES.dev[1]||'';document.getElementById('soInput').value=CANDIDATES.so[0]||'';buildSentence()}
+function buildSentence(){var w=document.getElementById('whatInput').value.trim()||'the main topic',d1=document.getElementById('dev1Input').value.trim()||'the first key development',d2=document.getElementById('dev2Input').value.trim()||'the second key development',so=document.getElementById('soInput').value.trim()||'its broader significance',t=document.getElementById('template').value,s;if(t==='while')s='While '+d1+', the passage discusses '+w+', as '+d2+', thereby highlighting '+so.replace(/^which\s+/i,'')+'.';else if(t==='which')s='The passage discusses '+w+', which involves '+d1+' and '+d2+', ultimately highlighting '+so.replace(/^which\s+/i,'')+'.';else if(t==='with')s='The passage discusses '+w+' with '+d1+' and '+d2+', which highlights '+so.replace(/^which\s+/i,'')+'.';else s='The passage discusses '+w+', covering '+d1+' and '+d2+', which highlights '+so.replace(/^which\s+/i,'')+'.';document.getElementById('sentenceOut').textContent=s}
+function checkAnswer(){var a=document.getElementById('answer').value.trim();var w=tokenize(a).length,fullStops=(a.match(/[.!?]/g)||[]).length,issues=[];if(!a)issues.push(['bad','没有检测到答案。']);if(fullStops>1)issues.push(['bad','整段出现了多个句末标点。SWT 必须是完整的一句话。']);if(w<5||w>75)issues.push(['bad','词数 '+w+'，不在 5-75 范围内。']);else if(w>=35&&w<=55)issues.push(['ok','词数 '+w+'，在推荐的 35-55 词区间。']);else issues.push(['warn','词数 '+w+'，形式合格；为了降低语法风险，可以继续压缩到 35-55。']);if(/,\s*(however|therefore|moreover|furthermore|in addition|also|thus|consequently)\b/i.test(a))issues.push(['bad','逗号后直接跟 however / therefore / also 等副词。这里要改成分号或新句子。']);if(/\bare\s+(go|come|make|take|give|improve|increase|decrease|show|suggest|allow|provide|help|create|lead|cause)\b/i.test(a))issues.push(['bad','检测到 are + 动词原形，检查 be 动词后面的形式。']);if(/\bbecause\s+[A-Z]/.test(a))issues.push(['bad','句中 because 后面的单词不应大写。']);if(a&&a[0]!==a[0].toUpperCase())issues.push(['warn','首字母建议大写。']);var out=document.getElementById('checkOut');out.className='check on';out.innerHTML=issues.map(function(x){return '<div class="'+x[0]+'">'+esc(x[1])+'</div>'}).join('')}
+function getKey(){var k=localStorage.getItem('ds_key')||'';if(k)return k;k=(prompt('粘贴 DeepSeek API Key。Key 只保存在当前浏览器。','')||'').trim();if(k)localStorage.setItem('ds_key',k);return k}
+async function aiCompress(){var src=document.getElementById('source').value.trim(),key=getKey();if(!src){alert('先粘贴文章');return}if(!key){return}document.getElementById('sentenceOut').textContent='正在按双保险模板压缩...';var sys='你是PTE SWT教师。按WHAT-DEVELOPMENT-SO WHAT分析，并写出一句35-55词的安全摘要。只能有一个完整主句，连接词只使用 while/although/as/which/with/thereby + doing。禁止逗号+however/therefore/also。中文说明不超过五条，英文答案一行。';var user='文章：'+src+'\n请输出：1 WHAT 2 DEVELOPMENT 3 SO WHAT 4 一句摘要 5 语法风险。';try{var r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:sys},{role:'user',content:user}],temperature:.2,max_tokens:1400})});var d=await r.json();document.getElementById('sentenceOut').textContent=d.choices&&d.choices[0]?d.choices[0].message.content:'没有返回内容'}catch(e){document.getElementById('sentenceOut').textContent='请求失败：'+e.message}}
+document.getElementById('readerBtn').onclick=showReader;document.getElementById('keywordsBtn').onclick=extract;document.getElementById('fillBtn').onclick=fillTemplate;document.getElementById('buildBtn').onclick=buildSentence;document.getElementById('copyBtn').onclick=function(){navigator.clipboard&&navigator.clipboard.writeText(document.getElementById('sentenceOut').textContent)};document.getElementById('checkBtn').onclick=checkAnswer;document.getElementById('aiBtn').onclick=aiCompress;
+document.getElementById('prevSentence').onclick=function(){if(SIDX>0){SIDX--;renderReader()}};document.getElementById('nextSentence').onclick=function(){if(SIDX<SENTENCES.length-1){SIDX++;renderReader()}};
+document.getElementById('tabs').onclick=function(e){if(e.target.tagName!=='BUTTON')return;var t=e.target.dataset.t;document.querySelectorAll('#tabs button').forEach(function(b){b.className=b.dataset.t===t?'on':''});document.getElementById('swtView').classList.toggle('hidden',t!=='swt');document.getElementById('peelView').classList.toggle('hidden',t!=='peel')};
+document.getElementById('keywordPanel').onclick=function(e){var chip=e.target.closest&&e.target.closest('.chip');if(!chip)return;var kind=chip.dataset.kind,value=chip.textContent;if(kind==='what'){document.getElementById('whatText').textContent=value;document.getElementById('whatInput').value=value}else if(kind==='so'){document.getElementById('soText').textContent=value;document.getElementById('soInput').value=value}else if(kind==='dev'){document.getElementById('devText').textContent=value;if(!document.getElementById('dev1Input').value||document.getElementById('dev1Input').value===CANDIDATES.dev[0])document.getElementById('dev1Input').value=value;else document.getElementById('dev2Input').value=value}buildSentence()};
+['whatInput','dev1Input','dev2Input','soInput'].forEach(function(id){document.getElementById(id).addEventListener('input',buildSentence)});document.getElementById('template').addEventListener('change',buildSentence);
+</script>
+</body></html>
