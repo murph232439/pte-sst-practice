@@ -64,7 +64,7 @@ function syncKey(){var b=document.getElementById('keyBtn');if(KEY){b.textContent
 function list(kw){
   kw=(kw||'').toLowerCase();
   var a=D.filter(x=>!kw||x.name.toLowerCase().includes(kw)||x.topic.toLowerCase().includes(kw));
-  document.getElementById('list').innerHTML=a.map(x=>'<div class="card" data-id="'+x.id+'"><div><div class="cname">'+esc(x.name)+'</div><div class="cmeta">写翻译 · AI 批改 · 2 条理由</div></div><div class="go">练 →</div></div>').join('')||'<div style="text-align:center;color:#98a0ae;padding:40px">没有找到</div>';
+  document.getElementById('list').innerHTML=a.map(x=>'<div class="card" data-id="'+x.id+'"><div style="flex:1"><div class="cname">'+esc(x.name)+'</div><div class="cmeta" style="color:#667;font-size:13.5px;line-height:1.5;margin-top:4px">'+esc(x.topic.length>90?x.topic.slice(0,90)+'…':x.topic)+'</div></div><div class="go">练 →</div></div>').join('')||'<div style="text-align:center;color:#98a0ae;padding:40px">没有找到</div>';
 }
 async function grade(idx, zh, ref){
   var box=document.getElementById('in'+idx), fb=document.getElementById('fb'+idx), ans=document.getElementById('ans'+idx), ex=document.getElementById('ex'+idx);
