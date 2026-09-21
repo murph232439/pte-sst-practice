@@ -3,7 +3,6 @@
 
   if (window.PTEFeedback) return;
 
-  var KEY_NAME = "ds_key";
   var STOP = new Set([
     "a", "an", "the", "and", "or", "of", "to", "in", "on", "for", "with", "as",
     "is", "are", "was", "were", "be", "been", "by", "from", "that", "this", "it",
@@ -34,7 +33,18 @@
       ".pfbChip{display:inline-block;border-radius:14px;padding:3px 9px;font-size:12.5px;background:#fff2d9;color:#8a5b00}",
       ".pfbList{margin:5px 0 0 18px}.pfbList li{margin:3px 0}",
       ".pfbTa{width:100%;min-height:100px;border:1px solid #d8dde6;border-radius:10px;padding:10px;font:inherit;line-height:1.6;resize:vertical}",
-      ".pfbTa:focus{border-color:#2456a6;outline:0}"
+      ".pfbTa:focus{border-color:#2456a6;outline:0}",
+      ".pfbPreview{margin-top:4px;padding:10px 12px;border:1px solid #f0d6d6;border-radius:9px;background:#fffafa;white-space:pre-wrap;line-height:1.8}",
+      ".pfbErr{background:#fff0f0;color:#9f2f2f;text-decoration:underline wavy #d9534f;text-underline-offset:3px;cursor:help}",
+      ".pfbGramList{margin-top:10px}",
+      ".pfbGramItem{padding:8px 0;border-top:1px solid #f0e3e3}",
+      ".pfbGramItem:first-child{border-top:0}",
+      ".pfbGramIssue{font-size:13.5px;color:#7a3030}",
+      ".pfbGramBad{color:#b33;font-weight:700}",
+      ".pfbGramGood{color:#1b7a4b;font-weight:700}",
+      ".pfbGramMsg{font-size:12.5px;color:#8b93a3;margin-top:2px}",
+      ".pfbFixBtn{margin-left:7px;border:0;border-radius:7px;padding:2px 8px;font-size:12px;background:#e7f7ee;color:#1b7a4b;cursor:pointer}",
+      ".pfbNote{margin-top:8px;font-size:12px;color:#8b93a3}"
     ].join("");
     document.head.appendChild(style);
   }
@@ -188,75 +198,160 @@
     host.appendChild(tip);
   }
 
-  function getKey() {
-    var key = localStorage.getItem(KEY_NAME) || "";
-    if (key) return key;
-    key = (window.prompt("粘贴 DeepSeek API Key。Key 只会保存在这台设备的浏览器中。", "") || "").trim();
-    if (key) localStorage.setItem(KEY_NAME, key);
-    return key;
+  function localGrammarMatches(text) {
+    var matches = [];
+    var rules = [
+      { pattern: /\b([a-z]+)\s+\1\b/gi, replace: function (m) { return m[1]; }, message: "重复单词" },
+      { pattern: /\b(He|She|It)\s+have\b/gi, replace: function (m) { return m[1] + " has"; }, message: "第三人称单数用 has" },
+      { pattern: /\b(He|She|It)\s+do\b/gi, replace: function (m) { return m[1] + " does"; }, message: "第三人称单数用 does" },
+      { pattern: /\b(He|She|It)\s+don't\b/gi, replace: function (m) { return m[1] + " doesn't"; }, message: "第三人称单数用 doesn't" },
+      { pattern: /\b(I|You|We|They)\s+has\b/gi, replace: function (m) { return m[1] + " have"; }, message: "这里应该用 have" },
+      { pattern: /\b(I|You|We|They)\s+doesn't\b/gi, replace: function (m) { return m[1] + " don't"; }, message: "这里应该用 don't" },
+      { pattern: /\b(people|children)\s+is\b/gi, replace: function (m) { return m[1] + " are"; }, message: "复数主语用 are" },
+      { pattern: /\b(discuss about)\b/gi, replace: "discuss", message: "discuss 后面不接 about" },
+      { pattern: /\b(depends of)\b/gi, replace: "depends on", message: "固定搭配是 depend on" },
+      { pattern: /\b(interested on)\b/gi, replace: "interested in", message: "固定搭配是 interested in" },
+      { pattern: /\b(married with)\b/gi, replace: "married to", message: "固定搭配是 married to" },
+      { pattern: /\b(according with)\b/gi, replace: "according to", message: "固定搭配是 according to" },
+      { pattern: /\b(can|should|must)\s+to\b/gi, replace: function (m) { return m[1]; }, message: "情态动词后直接接动词原形" },
+      { pattern: /\bmore better\b/gi, replace: "better", message: "better 本身已经是比较级" },
+      { pattern: /\binformations\b/gi, replace: "information", message: "information 通常不可数" },
+      { pattern: /\bequipments\b/gi, replace: "equipment", message: "equipment 通常不可数" },
+      { pattern: /\badvices\b/gi, replace: "advice", message: "advice 通常不可数" },
+      { pattern: /\bhomeworks\b/gi, replace: "homework", message: "homework 通常不可数" }
+    ];
+    rules.forEach(function (rule) {
+      var match;
+      rule.pattern.lastIndex = 0;
+      while ((match = rule.pattern.exec(text))) {
+        matches.push({
+          offset: match.index,
+          length: match[0].length,
+          message: rule.message,
+          replacements: [{ value: typeof rule.replace === "function" ? rule.replace(match) : rule.replace }]
+        });
+      }
+    });
+    return grammarReplacements(matches, text);
   }
 
-  async function deepFeedback(options, host) {
-    var text = (options.text || "").trim();
-    if (!text) {
+  function appendGrammarText(host, text, textarea, matches, fallback) {
+    host.textContent = "";
+    var clean = (matches || []).filter(function (match) {
+      return match && Number.isFinite(match.offset) && match.length > 0;
+    });
+    var title = document.createElement("div");
+    title.className = "pfbMeta";
+    title.textContent = clean.length
+      ? "语法检查：发现 " + clean.length + " 处需要确认"
+      : "语法检查：暂未发现明显错误";
+    host.appendChild(title);
+
+    var preview = document.createElement("div");
+    preview.className = "pfbPreview";
+    var cursor = 0;
+    clean.forEach(function (match) {
+      if (match.offset < cursor || match.offset >= text.length) return;
+      preview.appendChild(document.createTextNode(text.slice(cursor, match.offset)));
+      var mark = document.createElement("span");
+      mark.className = "pfbErr";
+      mark.textContent = text.slice(match.offset, match.offset + match.length);
+      mark.title = match.message || "需要检查";
+      preview.appendChild(mark);
+      cursor = match.offset + match.length;
+    });
+    preview.appendChild(document.createTextNode(text.slice(cursor)));
+    host.appendChild(preview);
+
+    if (!clean.length) return;
+    var list = document.createElement("div");
+    list.className = "pfbGramList";
+    clean.forEach(function (match) {
+      var item = document.createElement("div");
+      item.className = "pfbGramItem";
+      var issue = document.createElement("div");
+      issue.className = "pfbGramIssue";
+      var bad = document.createElement("span");
+      bad.className = "pfbGramBad";
+      bad.textContent = text.slice(match.offset, match.offset + match.length);
+      issue.appendChild(bad);
+      var replacement = match.replacements && match.replacements[0] && match.replacements[0].value;
+      if (replacement !== undefined && replacement !== null) {
+        var arrow = document.createElement("span");
+        arrow.textContent = " → ";
+        issue.appendChild(arrow);
+        var good = document.createElement("span");
+        good.className = "pfbGramGood";
+        good.textContent = replacement;
+        issue.appendChild(good);
+        var fix = document.createElement("button");
+        fix.type = "button";
+        fix.className = "pfbFixBtn";
+        fix.textContent = "替换";
+        fix.addEventListener("click", function () {
+          var source = textarea.value;
+          textarea.value = source.slice(0, match.offset) + replacement + source.slice(match.offset + match.length);
+          textarea.dispatchEvent(new Event("input", { bubbles: true }));
+          checkGrammar(textarea, host);
+        });
+        issue.appendChild(fix);
+      }
+      item.appendChild(issue);
+      var message = document.createElement("div");
+      message.className = "pfbGramMsg";
+      message.textContent = match.message || "请结合句子结构检查这里。";
+      item.appendChild(message);
+      list.appendChild(item);
+    });
+    host.appendChild(list);
+    var note = document.createElement("div");
+    note.className = "pfbNote";
+    note.textContent = fallback
+      ? "网络不可用，已使用本地基础规则检查。"
+      : "使用免费语法检查服务，不消耗 AI token；建议以句意和上下文为准。";
+    host.appendChild(note);
+  }
+
+  function grammarReplacements(matches, text) {
+    var clean = (matches || []).filter(function (match) {
+      return match && Number.isFinite(match.offset) && match.length > 0;
+    }).sort(function (a, b) { return a.offset - b.offset; });
+    var accepted = [];
+    clean.forEach(function (match) {
+      if (!accepted.length || match.offset >= accepted[accepted.length - 1].offset + accepted[accepted.length - 1].length) {
+        accepted.push(match);
+      }
+    });
+    return accepted;
+  }
+
+  function checkGrammar(textarea, host) {
+    var text = (textarea && textarea.value) || "";
+    if (!text.trim()) {
       host.classList.add("on");
-      host.textContent = "先把摘要、笔记或复述转写放进来，再点 AI 批改。";
+      host.textContent = "先写下英文摘要或复述，再点语法划线。";
       return;
     }
-    var key = getKey();
-    if (!key) return;
-
     host.classList.add("on");
-    host.textContent = "正在给对方反馈，请稍等…";
-    var part = options.part || "";
-    var system;
-    if (part === "fix") {
-      system = "你是 PTE 段落改错老师。请只根据学生答案和正确段落批改。先用一句具体肯定，再列出最重要的错误并给改后表达，最后给一版完整正确段落。中文讲解，英文举例，语气鼓励，不用“不是...而是...”句式。";
-    } else if (part === "sst" || part === "SST") {
-      system = "你是 PTE SST 摘要批改老师。先给一句具体肯定，再按“内容覆盖 / 语言问题 / 下一步”反馈。最多指出 3 个语言问题，每条必须引用学生原句并给出改后表达，不用分数，不写空泛建议，不用“不是...而是...”句式。最后给一版 50-70 词的改进摘要。中文讲解，英文举例。";
-    } else {
-      system = "你是 PTE RL 复述老师。先给一句具体肯定，再按“内容覆盖 / 组织与表达 / 下一步”反馈。请列出漏掉的关键信息，指出最影响理解的表达问题并给改后句子，最后给一版约 40 秒可说的示范复述。中文讲解，英文举例，语气鼓励，不用“不是...而是...”句式。";
-    }
-    var phraseText = (options.phrases || []).map(function (phrase) {
-      return typeof phrase === "string" ? phrase : phrase.en;
-    }).join("; ");
-    var transcript = (options.transcript || "").slice(0, 9000);
-    var user = [
-      "题目：" + (options.title || ""),
-      "关键点：" + phraseText,
-      "参考内容：" + (options.reference || ""),
-      "听力原文/上下文：" + transcript,
-      "学生输入：" + text,
-      "请直接给可执行的反馈。"
-    ].join("\n\n");
-
-    try {
-      var response = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + key
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: system },
-            { role: "user", content: user }
-          ],
-          temperature: 0.3,
-          max_tokens: 1800
-        })
-      });
-      var data = await response.json();
-      if (!response.ok || data.error) {
-        throw new Error((data.error && data.error.message) || ("HTTP " + response.status));
-      }
-      host.textContent = data.choices && data.choices[0] && data.choices[0].message.content
-        ? data.choices[0].message.content
-        : "没有收到反馈内容。";
-    } catch (error) {
-      host.textContent = "反馈失败：" + error.message + "\n可能是 API Key、网络或额度问题。快速反馈仍然可以继续使用。";
-    }
+    host.textContent = "正在检查语法，请稍等…";
+    var input = text.slice(0, 5000);
+    var body = new URLSearchParams();
+    body.set("text", input);
+    body.set("language", "en-US");
+    fetch("https://api.languagetool.org/v2/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    }).then(function (response) {
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return response.json();
+    }).then(function (data) {
+      var matches = grammarReplacements(data.matches || [], input);
+      appendGrammarText(host, input, textarea, matches, false);
+    }).catch(function () {
+      var matches = localGrammarMatches(input);
+      appendGrammarText(host, input, textarea, matches, true);
+    });
   }
 
   function makeControls(config) {
@@ -280,12 +375,12 @@
     quick.type = "button";
     quick.className = "pfbBtn ghost";
     quick.textContent = config.quickLabel || "快速反馈";
-    var ai = document.createElement("button");
-    ai.type = "button";
-    ai.className = "pfbBtn";
-    ai.textContent = config.aiLabel || "AI 精批";
+    var grammar = document.createElement("button");
+    grammar.type = "button";
+    grammar.className = "pfbBtn";
+    grammar.textContent = config.grammarLabel || "语法划线";
     row.appendChild(quick);
-    row.appendChild(ai);
+    row.appendChild(grammar);
     box.appendChild(row);
 
     var feedback = document.createElement("div");
@@ -300,15 +395,8 @@
         renderCoverage(feedback, (textarea && textarea.value) || "", config.phrases || [], config.part);
       }
     });
-    ai.addEventListener("click", function () {
-      deepFeedback({
-        text: (textarea && textarea.value) || "",
-        part: config.part,
-        title: config.title,
-        reference: config.reference,
-        transcript: config.transcript,
-        phrases: config.phrases || []
-      }, feedback);
+    grammar.addEventListener("click", function () {
+      checkGrammar(textarea, feedback);
     });
     return box;
   }
