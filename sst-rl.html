@@ -60,16 +60,16 @@ function renderList(kw){
   var arr=cur().filter(x=>!kw||x.name.toLowerCase().includes(kw));
   document.getElementById('list').innerHTML=arr.map(x=>'<div class="card" data-id="'+x.id+'"><div><div class="cname">'+esc(x.name)+'</div><div class="cmeta">'+(TT==='sst'?'官方音频 · 写 50-70 词摘要':'官方音频 · 准备 10 秒 + 说 40 秒')+'</div></div><div class="go">开始 →</div></div>').join('')||'<div style="text-align:center;color:#98a0ae;padding:40px">没有找到题目</div>';
 }
-function practice(item){
+function fmtAudio(sec){if(!isFinite(sec))return '--:--';sec=Math.max(0,Math.round(sec));return Math.floor(sec/60)+':'+('0'+(sec%60)).slice(-2)} function updateAudioMeta(){var el=document.getElementById('audioMeta');if(!el)return;if(!CUR){el.textContent='时长 --:--';return}if(CUR.readyState>=1)el.textContent='时长 '+fmtAudio(CUR.duration);else CUR.addEventListener('loadedmetadata',function(){el.textContent='时长 '+fmtAudio(CUR.duration)},{once:true})} function practice(item){
   clearT();
   var k=(item.logicPhrases||[]).map(p=>'<span class="kw">'+esc(p.en)+(p.zh?'<span style="display:block;font-size:11.5px;color:#8b93a3;font-weight:400;margin-top:1px">'+esc(p.zh)+'</span>':'')+'</span>').join('');
   var ana=esc(item.ana).replace(/&lt;br\s*\/?&gt;/gi,'\n').replace(/\n{2,}/g,'\n');
   var body='';
   if(TT==='sst'){
-    body='<div class="panel"><div class="row"><button class="bigbtn" id="playBtn">▶ 播放音频</button><span class="timer" id="timer">08:30</span><button class="bigbtn ghost" id="startBtn">开始计时</button></div><div class="tips">先听音频，再写摘要。写完点下面的按钮对照范文。</div></div>'+
+    body='<div class="panel"><div class="row"><button class="bigbtn" id="playBtn">▶ 播放音频</button><span id="audioMeta" style="font-size:13px;color:#8b93a3">时长 --:--</span><span class="timer" id="timer">08:30</span><button class="bigbtn ghost" id="startBtn">开始计时</button></div><div class="tips">先听音频，再写摘要。写完点下面的按钮对照范文。</div></div>'+
     '<div class="panel"><textarea id="ans" placeholder="在这里写你的摘要（50-70 词）..."></textarea><div class="wc" id="wc">0 词</div></div>';
   } else {
-    body='<div class="panel"><div class="row"><button class="bigbtn" id="playBtn">▶ 播放音频</button></div><div class="rlstep" id="rlstep">听完整段讲座后，按「开始复述」。先给 10 秒准备，然后说 40 秒。</div><div class="row"><span class="phase" id="phase">准备开始</span><span class="timer" id="timer">00:00</span><button class="bigbtn ghost" id="startBtn">开始复述</button></div></div>'+
+    body='<div class="panel"><div class="row"><button class="bigbtn" id="playBtn">▶ 播放音频</button><span id="audioMeta" style="font-size:13px;color:#8b93a3">时长 --:--</span></div><div class="rlstep" id="rlstep">听完整段讲座后，按「开始复述」。先给 10 秒准备，然后说 40 秒。</div><div class="row"><span class="phase" id="phase">准备开始</span><span class="timer" id="timer">00:00</span><button class="bigbtn ghost" id="startBtn">开始复述</button></div></div>'+
     '<div class="panel"><div class="tips">复述时对着手机录音，说完回听一遍，再对照下面的范文。RL 评分看内容覆盖和流利度，不用背原文。</div></div>';
   }
   body+='<div class="panel"><div class="row"><button class="bigbtn ghost" data-sec="refSec">看参考范文</button><button class="bigbtn ghost" data-sec="anaSec">看中文对照</button><button class="bigbtn ghost" data-sec="kwSec">看关键词</button></div>'+
@@ -77,7 +77,7 @@ function practice(item){
   '<div class="sec" id="anaSec"><h3>中文对照</h3><div class="ana">'+ana+'</div></div>'+
   '<div class="sec" id="kwSec"><h3>关键词</h3><div class="kws">'+k+'</div><div class="tips">听音频时抓这些词组，然后用它们组织摘要/复述。</div></div></div>';
   document.getElementById('list').innerHTML='<span class="back" id="back">← 返回列表</span><div class="panel"><div class="ptitle">'+esc(item.name)+'</div></div>'+body;
-  document.getElementById('playBtn').onclick=function(){ if(CUR){try{CUR.pause()}catch(e){}} CUR=new Audio(item.audio); var b=this; b.textContent='❚❚ 播放中'; CUR.onended=function(){b.textContent='▶ 播放音频'}; CUR.play().catch(function(){b.textContent='▶ 播放音频';alert('音频加载失败')}); };
+  document.getElementById('playBtn').onclick=function(){ var b=this; if(CUR && !CUR.paused){CUR.pause();return;} if(!CUR || CUR.__src!==item.audio){if(CUR){try{CUR.pause()}catch(e){}} CUR=new Audio(item.audio);CUR.__src=item.audio;CUR.onplay=function(){b.textContent='❚❚ 暂停'};CUR.onpause=function(){b.textContent='▶ 继续播放'};CUR.onended=function(){b.textContent='▶ 播放音频'};updateAudioMeta();} updateAudioMeta(); if(CUR.ended)CUR.currentTime=0; CUR.play().catch(function(){b.textContent='▶ 播放音频';alert('音频加载失败')}); };
   document.getElementById('startBtn').onclick=function(){
     var b=this;
     if(TIMER){clearT();b.textContent=TT==='sst'?'继续计时':'开始复述';return;}
