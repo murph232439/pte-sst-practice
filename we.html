@@ -39,6 +39,7 @@ var CUR=null,TIMER=null,LEFT=1200;
 function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function pm(){var m=Math.floor(LEFT/60),s=LEFT%60;var el=document.getElementById('timer');if(!el)return;el.textContent=('0'+m).slice(-2)+':'+('0'+s).slice(-2);el.className='timer'+(LEFT<=120?' warn':'')}
 function stopT(){if(TIMER){clearInterval(TIMER);TIMER=null}}
+function copyText(text,btn){var done=function(){var old=btn.textContent;btn.textContent='已复制';setTimeout(function(){btn.textContent=old},1200)};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(function(){done()});return}var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();done()}
 function list(kw){
   kw=(kw||'').toLowerCase();
   var a=D.filter(x=>!kw||x.name.toLowerCase().includes(kw)||x.topic.toLowerCase().includes(kw));
@@ -46,16 +47,17 @@ function list(kw){
 }
 function practice(it){
   stopT(); LEFT=1200;
-  var tpl='<b>开头</b>\nNowadays, '+esc(it.name)+' has become a controversial issue. Some people believe that ______, while others argue that ______. In my opinion, ______.\n\n<b>主体 1</b>\nFirst and foremost, ______. For example, ______. This clearly shows that ______.\n\n<b>主体 2</b>\nFurthermore, ______. According to ______, ______. Therefore, ______.\n\n<b>结尾</b>\nIn conclusion, ______. I believe that ______.';
+  var tpl='<b>第 1 段：引入与立场</b>\nNowadays, an increasing number of people are concerned about [主题词]. Some argue that [题目改写]. I generally agree / disagree with this view because [核心立场].\n\n<b>第 2 段：让步与反方观点</b>\nAdmittedly, proponents of the view that [反方观点] raise valid points. In fact, [反方论点]. For instance, [反方例子]. Thus, it is understandable why some argue that [反方结论].\n\n<b>第 3 段：我方论证</b>\nNevertheless, these drawbacks are largely outweighed by the benefits that ['+esc(it.name)+'] brings. To begin with, the positive impact of ['+esc(it.name)+'] is most evident in [领域 1]. For instance, [例子 1]. Furthermore, ['+esc(it.name)+'] also plays a crucial role in [领域 2], as it [进一步说明]. For example, [例子 2]. Therefore, it is clear that [本段总结].\n\n<b>第 4 段：结论</b>\nIn conclusion, while the view that [让步观点] may have some merits, I am convinced that [我方观点] is ultimately more justifiable, as it not only offers [A] but also provides [B].';
   var h='<span class="back" id="back">← 返回题库</span>'+
   '<div class="panel"><div class="topic">'+esc(it.topic||it.name)+'</div></div>'+
   '<div class="panel"><textarea id="ta" placeholder="在这里写 200-300 词的作文..."></textarea><div class="wc" id="wc">0 词</div></div>'+
-  '<div class="panel"><button class="bigbtn ghost" id="showTpl" style="width:100%;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;background:#eef3fb;color:#2456a6">写作模板</button><div class="ans" id="tpl"><h3>WE 万能模板</h3><div class="tpl">'+tpl+'</div></div></div>'+
+  '<div class="panel"><button class="bigbtn ghost" id="showTpl" style="width:100%;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;background:#eef3fb;color:#2456a6">四段模板</button><div class="ans" id="tpl"><h3>WE 四段模板 · 让步 + 反驳</h3><div class="tpl" id="tplText">'+tpl+'</div><button class="bigbtn ghost" id="copyTpl" style="width:100%;margin-top:10px">复制模板</button><div style="font-size:12.5px;color:#98a0ae;margin-top:8px">槽位里的抽象表达，可以到 <a href="we-collocations.html" style="color:#2456a6">词伙系统记忆</a> 里找更准确的搭配。</div></div></div>'+
   '<div class="panel"><button class="bigbtn ghost" id="showRef" style="width:100%;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;background:#eef3fb;color:#2456a6">看参考范文</button><div class="ans" id="ans"><h3>参考范文</h3><div class="ref">'+esc(it.ref)+'</div></div></div>'+
   '<div class="bar"><span class="timer" id="timer">20:00</span><button class="ghost" id="startBtn">开始</button><button id="nextBtn">下一题</button></div>';
   document.getElementById('list').innerHTML=h;
   document.getElementById('back').onclick=()=>{stopT();list(document.getElementById('q').value)};
   document.getElementById('showTpl').onclick=()=>document.getElementById('tpl').classList.toggle('on');
+  document.getElementById('copyTpl').onclick=function(){copyText(document.getElementById('tplText').innerText,this)};
   document.getElementById('showRef').onclick=()=>document.getElementById('ans').classList.toggle('on');
   document.getElementById('startBtn').onclick=function(){
     if(TIMER){stopT();this.textContent='开始';return;}
