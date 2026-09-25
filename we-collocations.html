@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2456a6">
-<title>WE 词伙系统记忆</title>
+<title>WE 翻译精修</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;background:#f4f6f9;color:#1f2430;font-size:15px;line-height:1.65}
@@ -37,17 +37,19 @@ main{padding:14px 14px 48px;max-width:840px;margin:0 auto}
 .quickbar{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;border-radius:10px;padding:10px 13px;margin-bottom:10px;box-shadow:0 1px 2px rgba(20,30,50,.06);font-size:13px;color:#667}
 .quickTime{font-size:21px;font-weight:750;color:#2456a6;font-variant-numeric:tabular-nums}.quickTime.warn{color:#d9534f}
 .quickGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.quickGrid button{border:0;border-radius:10px;padding:12px 8px;background:#fff;color:#2456a6;font-size:13.5px;font-weight:700;box-shadow:0 1px 2px rgba(20,30,50,.06);cursor:pointer}
+.modeGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.modeGrid button{border:1px solid #d8dde6;border-radius:10px;padding:11px 6px;background:#fff;color:#667;font-size:14px;font-weight:700;cursor:pointer}.modeGrid button.on{background:#2456a6;border-color:#2456a6;color:#fff}
+.keyInput{width:100%;padding:11px 12px;border:1px solid #d8dde6;border-radius:10px;font-size:15px;outline:0;background:#fafbfd;margin-top:7px}.keyMsg{min-height:20px;color:#8b93a3;font-size:12.5px;margin-top:5px}.aiResult{display:none;margin-top:12px;padding:12px 13px;border-radius:10px;background:#f7f9fc;color:#334;font-size:14.5px;line-height:1.75;white-space:pre-wrap}.aiResult.on{display:block}.studyActions.three{grid-template-columns:1.25fr 1fr 1fr}
 .listItem{background:#fff;border-radius:10px;padding:11px 13px;margin-bottom:7px;box-shadow:0 1px 2px rgba(20,30,50,.05)}
 .listItem .en{font-weight:700;color:#2456a6}.listItem .zh{font-size:13px;color:#667;margin-top:2px}.listItem .ex{font-size:12.5px;color:#8b93a3;margin-top:4px}
 footer{text-align:center;color:#b6bcc7;font-size:12px;padding:4px 0 22px}
 @media(max-width:520px){.stats{grid-template-columns:repeat(2,1fr)}.quickGrid{grid-template-columns:1fr}}
 </style></head><body>
 <header>
-<h1>WE 词伙系统记忆</h1>
+<h1>WE 翻译精修</h1>
 <div class="nav"><a href="we-entry.html">← 返回 WE 教师入口</a></div>
 <div class="tabs" id="tabs">
 <button class="on" data-m="review">今日复习</button>
-<button data-m="quick">5 分钟速译</button>
+<button data-m="quick">翻译精修</button>
 <button data-m="function">功能词伙</button>
 <button data-m="topic">主题词库</button>
 <button data-m="all">全部搜索</button>
@@ -60,7 +62,8 @@ var DATA=[{"id":"fn-01","kind":"function","group":"effect","en":"lead to","zh":"
 var GROUPS={"effect":{"name":"因果与影响","desc":"解释原因、结果和影响"},"evaluate":{"name":"利弊与比较","desc":"比较利弊、表达平衡观点"},"solution":{"name":"措施与责任","desc":"提出建议、说明责任和行动"},"growth":{"name":"能力与发展","desc":"描述学习、成长和个人发展"},"relation":{"name":"关系与依赖","desc":"表达依赖、关联和受影响"},"trend":{"name":"程度与趋势","desc":"描述趋势、程度和可能性"},"education":{"name":"教育","desc":"教育场景常用词伙"},"technology":{"name":"科技","desc":"科技场景常用词伙"},"environment":{"name":"环境","desc":"环境场景常用词伙"},"health":{"name":"健康","desc":"健康场景常用词伙"},"work":{"name":"工作","desc":"工作场景常用词伙"},"society":{"name":"社会","desc":"社会场景常用词伙"},"culture":{"name":"文化与媒体","desc":"文化、艺术和媒体场景常用词伙"},"law":{"name":"法律与犯罪","desc":"法律、犯罪和公共安全场景常用词伙"},"media":{"name":"新闻与信息","desc":"新闻、广告、网络信息与媒体素养"},"government":{"name":"政府与公共政策","desc":"公共支出、福利、税收与社会治理"},"urban":{"name":"城市与交通","desc":"城市化、住房、交通和公共空间"},"global":{"name":"全球化与旅行","desc":"国际贸易、旅游、语言和文化交流"}};
 var KEY="pte_we_collocations_v1";
 var MODE="review", QUEUE=[], QI=0, SEARCH="";
-var QUICK={active:false,done:false,left:300,timer:null,score:0,total:0,group:""};
+var QUICK_MODE=0;
+var QUICK={active:false,done:false,timed:false,left:300,timer:null,score:0,total:0,group:""};
 var INTERVALS=[1,3,7,14,30];
 function esc(s){return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]})}
 function today(){var d=new Date();return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}
@@ -91,12 +94,30 @@ function clearQuickTimer(){if(QUICK.timer){clearInterval(QUICK.timer);QUICK.time
 function updateQuickClock(){var el=document.getElementById("quickTime");if(!el)return;el.textContent=formatClock(QUICK.left);el.className="quickTime"+(QUICK.left<=60?" warn":"")}
 function startQuickTimer(){clearQuickTimer();updateQuickClock();QUICK.timer=setInterval(function(){QUICK.left--;if(QUICK.left<=0){QUICK.left=0;clearQuickTimer();QUICK.done=true;render();return}updateQuickClock()},1000)}
 function quickPool(group){var pool=group?groupItems(group):DATA;return pool.filter(function(x){return x.en.length<=90&&x.en.split(/\s+/).length<=10&&x.en.indexOf("/")<0&&x.en.indexOf(";")<0})}
-function renderQuickSetup(){var groups=groupsFor("topic");var gs=groups.map(function(g){var n=quickPool(g).length;return '<button data-q="'+g+'">'+esc(GROUPS[g].name)+' · '+n+'</button>'}).join("");return '<div class="panel"><h2>5 分钟速译</h2><p>看到中文后，直接输入英文词伙。每轮最多 30 个，先追求准确，再提高速度。</p></div><button class="primary" data-q="">全部主题 · '+quickPool("").length+'</button><div class="quickGrid">'+gs+'</div>'}
-function startQuick(group){var pool=quickPool(group);if(!pool.length)return;clearQuickTimer();QUEUE=shuffle(pool).slice(0,Math.min(30,pool.length));QI=0;QUICK.active=true;QUICK.done=false;QUICK.left=300;QUICK.score=0;QUICK.total=QUEUE.length;QUICK.group=group;MODE="quick";render();startQuickTimer()}
+function renderQuickSetup(){var groups=groupsFor("topic");var gs=groups.map(function(g){var n=quickPool(g).length;return '<button data-q="'+g+'">'+esc(GROUPS[g].name)+' · '+n+'</button>'}).join("");var keyed=!!localStorage.getItem("ds_key");return '<div class="panel"><h2>翻译精修</h2><p>先自己完成中译英，再用 AI 逐步修正准确性、搭配和自然度。参考表达用于升级，不要求机械照抄。</p><div class="modeGrid"><button class="'+(QUICK_MODE===0?"on":"")+'" data-t="0">逐句精修</button><button class="'+(QUICK_MODE===1?"on":"")+'" data-t="1">5 分钟速译</button></div></div><div class="panel"><h2>AI 精修设置</h2><input class="keyInput" id="apiKeyInput" type="password" placeholder="填写 DeepSeek API Key" autocomplete="off"><div class="keyMsg" id="apiKeyStatus">'+(keyed?"API Key 已保存在本机。":"未设置 API Key，仍可检查答案，但不能使用 AI 精修。")+'</div><button class="ghost" id="saveApiKey" style="margin-top:7px">保存 API Key</button></div><button class="primary" data-q="">全部主题 · '+quickPool("").length+'</button><div class="quickGrid">'+gs+'</div>'}
+function startQuick(group){var pool=quickPool(group);if(!pool.length)return;clearQuickTimer();var timed=QUICK_MODE===1;QUEUE=shuffle(pool).slice(0,Math.min(timed?30:10,pool.length));QI=0;QUICK.active=true;QUICK.done=false;QUICK.timed=timed;QUICK.left=timed?300:0;QUICK.score=0;QUICK.total=QUEUE.length;QUICK.group=group;MODE="quick";render();if(timed)startQuickTimer()}
 function quickFinish(){QUICK.done=true;clearQuickTimer();render()}
 function quickNext(){QI++;if(QI>=QUEUE.length){quickFinish();return}render()}
-function renderQuickFinish(){var used=300-QUICK.left;var pct=QUICK.total?Math.round(QUICK.score/QUICK.total*100):0;return '<div class="panel"><h2>本轮完成</h2><p>'+QUICK.score+' / '+QUICK.total+' 正确，用时 '+formatClock(used)+'，正确率 '+pct+'%。</p></div><button class="primary" id="quickAgain">再练一轮</button><button class="ghost" id="quickChoose" style="margin-top:8px">选择主题</button>'}
-function renderQuickStudy(){if(!QUICK.active)return renderQuickSetup();if(QUICK.done)return renderQuickFinish();if(!QUEUE.length)return renderQuickFinish();var x=QUEUE[QI];var html='<span class="back" id="back">← 返回主题</span><div class="quickbar"><span>'+esc(QUICK.group?groupName(QUICK.group):"全部主题")+' · '+(QI+1)+' / '+QUICK.total+'</span><span class="quickTime" id="quickTime">'+formatClock(QUICK.left)+'</span><span>'+QUICK.score+' 分</span></div><div class="study"><div><span class="tag">5 分钟速译</span><span class="tag">'+esc(groupName(x.group))+'</span></div><div class="prompt">'+esc(x.zh)+'</div><input class="answerInput" id="answerInput" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="输入英文词伙"><div class="checkMsg" id="checkMsg"></div><div class="studyActions"><button class="ghost" id="checkAnswer">检查答案</button><button class="ghost" id="showAnswer">看答案</button></div><div class="answer" id="answer"><div class="phrase">'+esc(x.en)+'</div>'+answerDetails(x)+'</div><div class="marks" id="marks" style="display:none"><button class="easy" id="nextQuick" style="grid-column:1/-1">下一题</button></div></div>';return html}
+function renderQuickFinish(){var pct=QUICK.total?Math.round(QUICK.score/QUICK.total*100):0;var summary=QUICK.timed?'答对 '+QUICK.score+' / '+QUICK.total+'，用时 '+formatClock(300-QUICK.left)+'，正确率 '+pct+'%。':'本轮完成 '+QUICK.total+' 句，精确匹配 '+QUICK.score+' 句。';return '<div class="panel"><h2>本轮完成</h2><p>'+summary+'</p></div><button class="primary" id="quickAgain">再练一轮</button><button class="ghost" id="quickChoose" style="margin-top:8px">选择主题</button>'}
+function renderQuickStudy(){if(!QUICK.active)return renderQuickSetup();if(QUICK.done)return renderQuickFinish();if(!QUEUE.length)return renderQuickFinish();var x=QUEUE[QI];var right=QUICK.timed?'<span class="quickTime" id="quickTime">'+formatClock(QUICK.left)+'</span><span>'+QUICK.score+' 分</span>':'<span>逐句精修</span>';var html='<span class="back" id="back">← 返回主题</span><div class="quickbar"><span>'+esc(QUICK.group?groupName(QUICK.group):"全部主题")+' · '+(QI+1)+' / '+QUICK.total+'</span>'+right+'</div><div class="study"><div><span class="tag">'+(QUICK.timed?"5 分钟速译":"AI 翻译精修")+'</span><span class="tag">'+esc(groupName(x.group))+'</span></div><div class="prompt">'+esc(x.zh)+'</div><input class="answerInput" id="answerInput" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="先写你的英文翻译"><div class="checkMsg" id="checkMsg"></div><div class="studyActions three"><button class="ghost" id="aiRefine" style="background:#2456a6;color:#fff">AI 精修</button><button class="ghost" id="checkAnswer">检查</button><button class="ghost" id="showAnswer">参考答案</button></div><div class="aiResult" id="aiResult"></div><div class="answer" id="answer"><div class="phrase">'+esc(x.en)+'</div>'+answerDetails(x)+'</div><div class="marks" id="marks" style="display:none"><button class="easy" id="nextQuick" style="grid-column:1/-1">下一题</button></div></div>';return html}
+async function refineTranslation(){
+  var input=document.getElementById("answerInput"),out=document.getElementById("aiResult"),msg=document.getElementById("checkMsg");
+  if(!input||!out||!QUEUE.length)return;
+  var text=input.value.trim();
+  if(!text){input.className="answerInput wrong";msg.className="checkMsg bad";msg.textContent="先写下你的英文翻译。";input.focus();return}
+  var key=localStorage.getItem("ds_key")||"";
+  if(!key){out.className="aiResult on";out.textContent="还没有设置 API Key。返回主题页，在“AI 精修设置”里保存后再用。";return}
+  out.className="aiResult on";out.textContent="AI 正在精修…";msg.className="checkMsg";msg.textContent="";
+  var x=QUEUE[QI];
+  var system="你是PTE WE写作的翻译精修老师。学生把中文词伙或半句翻成英文，你要修正准确度、语法、搭配和自然度。优先保留学生原本正确的意思和用词，不要为了高级而高级，也不要把参考表达整句硬替换。只评价翻译，不重写论点。输出必须简洁，严格按以下格式：\n准确度：准确 / 部分准确 / 偏离\n精修版：一句完整英文\n关键修改：\n- 原表达 → 修改表达：原因（最多三条，没有问题就写“无需修改”）\n复用表达：一个可以迁移到写作里的英文表达\n下一步：一句操作建议";
+  var user="中文："+x.zh+"\n参考表达："+x.en+"\n主题："+groupName(x.group)+"\n使用场景："+(x.note||"写作翻译")+"\n学生翻译："+text;
+  try{
+    var response=await fetch("https://api.deepseek.com/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},body:JSON.stringify({model:"deepseek-chat",messages:[{role:"system",content:system},{role:"user",content:user}],temperature:0.2})});
+    var data=await response.json();
+    if(data.error){out.textContent="接口返回错误："+(data.error.message||"未知错误");return}
+    out.textContent=(data.choices&&data.choices[0]&&data.choices[0].message.content)||"没有返回精修内容。";
+  }catch(error){out.textContent="请求失败："+error.message+"。检查网络或 API Key。"}
+}
 function renderStudy(){if(!QUEUE.length){return renderReview()}var x=QUEUE[QI];var html='<span class="back" id="back">← 返回</span><div class="study"><div><span class="tag">'+esc(groupName(x.group))+'</span><span class="tag">'+(x.kind==="function"?"功能词伙":"主题词伙")+'</span></div><div class="prompt">'+esc(x.zh)+'</div><input class="answerInput" id="answerInput" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="输入完整英文词伙"><div class="checkMsg" id="checkMsg"></div><div class="studyActions"><button class="ghost" id="checkAnswer">检查答案</button><button class="ghost" id="showAnswer">看答案</button></div><div class="answer" id="answer"><div class="phrase">'+esc(x.en)+'</div>'+answerDetails(x)+'</div><div class="marks" id="marks" style="display:none"><button class="again" data-r="again">还要练</button><button class="good" data-r="good">记住了</button><button class="easy" data-r="easy">很熟</button></div></div><div class="stats" style="margin-top:12px"><div class="stat"><div class="num">'+(QI+1)+'</div><div class="lbl">当前</div></div><div class="stat"><div class="num">'+QUEUE.length+'</div><div class="lbl">本轮</div></div><div class="stat"><div class="num">'+counts().mastered+'</div><div class="lbl">已掌握</div></div></div>';return html}
 function render(){var app=document.getElementById("app");var html="";if(MODE==="study")html=renderStudy();else if(MODE==="quick")html=renderQuickStudy();else if(MODE==="function")html=renderGroups("function");else if(MODE==="topic")html=renderGroups("topic");else if(MODE==="all")html='<input class="search" id="search" placeholder="搜索英文、中文或例句" value="'+esc(SEARCH)+'"><div id="allList">'+renderList(DATA.filter(function(x){var k=SEARCH.toLowerCase();return !k||(x.en+" "+x.zh+" "+x.example+" "+x.note+" "+x.source+" "+groupName(x.group)).toLowerCase().indexOf(k)>=0}))+'</div>';else html=renderReview();app.innerHTML=html;bind()}
 function normalizeAnswer(s){return String(s||"").toLowerCase().replace(/[’‘']/g,"").replace(/[-–—]/g," ").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()}
@@ -112,7 +133,10 @@ function bind(){
   var search=document.getElementById("search");
   if(search)search.oninput=function(){SEARCH=this.value;render();document.getElementById("search").focus()};
   document.querySelectorAll(".group").forEach(function(el){el.onclick=function(){clearQuickTimer();QUEUE=shuffle(groupItems(el.dataset.g)).slice(0,10);QI=0;MODE="study";render()}});
+  document.querySelectorAll("[data-t]").forEach(function(el){el.onclick=function(){QUICK_MODE=Number(el.dataset.t);document.querySelectorAll("[data-t]").forEach(function(b){b.className=Number(b.dataset.t)===QUICK_MODE?"on":""})}});
   document.querySelectorAll("[data-q]").forEach(function(el){el.onclick=function(){startQuick(el.dataset.q)}});
+  var saveApiKey=document.getElementById("saveApiKey");
+  if(saveApiKey)saveApiKey.onclick=function(){var field=document.getElementById("apiKeyInput"),status=document.getElementById("apiKeyStatus"),value=field?field.value.trim():"";if(value){localStorage.setItem("ds_key",value);if(field)field.value="";if(status)status.textContent="API Key 已保存在本机。"}else{localStorage.removeItem("ds_key");if(status)status.textContent="已清除 API Key。"}};
   var input=document.getElementById("answerInput"),check=document.getElementById("checkAnswer"),show=document.getElementById("showAnswer");
   function checkAnswer(){
     if(!input||!QUEUE.length)return;
@@ -120,7 +144,7 @@ function bind(){
     if(!typed){input.className="answerInput wrong";msg.className="checkMsg bad";msg.textContent="先输入英文词伙。";return}
     if(typed===expected){
       input.className="answerInput right";msg.className="checkMsg ok";
-      if(MODE==="quick"){QUICK.score++;var scoreEl=document.querySelector(".quickbar span:last-child");if(scoreEl)scoreEl.textContent=QUICK.score+" 分";msg.textContent="正确，进入下一题。"}else{msg.textContent="正确。"}
+      if(MODE==="quick"){QUICK.score++;if(QUICK.timed){var scoreEl=document.querySelector(".quickbar span:last-child");if(scoreEl)scoreEl.textContent=QUICK.score+" 分"}msg.textContent="正确，进入下一题。"}else{msg.textContent="正确。"}
       revealStudy();
     }else{
       input.className="answerInput wrong";msg.className="checkMsg bad";msg.textContent="还不对，再检查词序、介词或单复数。";input.focus()
@@ -129,6 +153,8 @@ function bind(){
   if(check)check.onclick=checkAnswer;
   if(input)input.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();checkAnswer()}});
   if(show)show.onclick=revealStudy;
+  var aiRefine=document.getElementById("aiRefine");
+  if(aiRefine)aiRefine.onclick=refineTranslation;
   document.querySelectorAll("[data-r]").forEach(function(b){b.onclick=function(){mark(QUEUE[QI].id,b.dataset.r);QI++;if(QI>=QUEUE.length){MODE="review";QI=0;QUEUE=[]}render()}});
   var nextQuick=document.getElementById("nextQuick");
   if(nextQuick)nextQuick.onclick=quickNext;
