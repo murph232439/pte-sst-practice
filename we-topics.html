@@ -70,24 +70,25 @@ function list(kw){
 async function grade(idx, zh, ref){
   var box=document.getElementById('in'+idx), fb=document.getElementById('fb'+idx), ans=document.getElementById('ans'+idx), ex=document.getElementById('ex'+idx);
   var txt=(box.value||'').trim();
-  if(!txt){fb.className='fb on';fb.textContent='先写下你的英文翻译，再点批改。';return;}
-  if(!KEY){fb.className='fb on';fb.textContent='还没有设置 API Key，点右上角「设置 API Key」填一下。';return;}
-  fb.className='fb on loading'; fb.textContent='批改中…';
+  if(!txt){fb.className='fb on';fb.textContent='先写下你的英文翻译，再点 AI 精修。';return;}
+  if(!KEY){fb.className='fb on';fb.textContent='参考译句：\n'+ref+'\n\n还没有设置 API Key，点右上角「设置 API Key」填一下。';return;}
+  fb.className='fb on loading'; fb.textContent='精修中…';
   var sys='你是PTE WE写作的翻译精修老师。学生把中文理由翻译成英文。请优先保留学生原本正确的意思和用词，不要为了高级而高级，也不要把参考答案整句硬替换。只评价翻译，不重写论点。输出必须简洁，严格按以下格式：\n准确度：准确 / 部分准确 / 偏离\n精修版：一句完整英文\n关键修改：\n- 原表达 → 修改表达：原因（最多三条，没有问题就写“无需修改”）\n复用表达：一个可以迁移到写作里的英文表达\n下一步：一句操作建议';
   var usr='中文原句：'+zh+'\n参考表达：'+ref+'\n学生翻译：'+txt;
   try{
     var r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+KEY},body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:sys},{role:'user',content:usr}],temperature:0.3})});
     var d=await r.json();
-    if(d.error){fb.textContent='接口返回错误：'+(d.error.message||'未知错误');return;}
-    fb.textContent=(d.choices&&d.choices[0]&&d.choices[0].message.content)||'没有返回内容';
-  }catch(e){ fb.textContent='请求失败：'+e.message+'（检查网络或 Key）'; }
+    if(d.error){fb.textContent='参考译句：\n'+ref+'\n\n接口返回错误：'+(d.error.message||'未知错误');return;}
+    var refined=(d.choices&&d.choices[0]&&d.choices[0].message.content)||'没有返回内容';
+    fb.textContent='参考译句：\n'+ref+'\n\nAI 精修：\n'+refined;
+  }catch(e){ fb.textContent='参考译句：\n'+ref+'\n\n请求失败：'+e.message+'（检查网络或 Key）'; }
 }
 function show(it){
   var h='<span class="back" id="back">← 返回列表</span>';
   h+='<div class="panel"><div class="ptitle">'+esc(it.name)+'</div><div class="lbl">完整题目</div><div class="topic">'+esc(it.topic)+'</div><div class="lbl">提问方式</div><span class="stance">'+esc(it.questionType||'通用观点题')+'</span><div class="lbl">建议立场</div><span class="stance">'+esc(it.stance)+'</span></div>';
   it.reasons.forEach(function(r,i){
     h+='<div class="rs"><div class="zh">'+esc(r.zh)+'</div><textarea id="in'+i+'" placeholder="写下你的英文翻译..."></textarea>'+
-    '<div class="acts"><button onclick="grade('+i+',\''+r.zh.replace(/'/g,"\\'")+'\',\''+r.en.replace(/'/g,"\\'")+'\')">AI 精修</button><button class="ghost" onclick="document.getElementById(\'ans'+i+'\').classList.toggle(\'on\');document.getElementById(\'ex'+i+'\').classList.toggle(\'on\')">参考答案</button></div>'+
+    '<div class="acts"><button onclick="grade('+i+',\''+r.zh.replace(/'/g,"\\'")+'\',\''+r.en.replace(/'/g,"\\'")+'\')">AI 精修</button><button class="ghost" onclick="document.getElementById(\'ans'+i+'\').classList.toggle(\'on\');document.getElementById(\'ex'+i+'\').classList.toggle(\'on\')">参考译句</button></div>'+
     '<div class="fb" id="fb'+i+'"></div><div class="ans" id="ans'+i+'">'+esc(r.en)+'</div><div class="ex" id="ex'+i+'">关键展开：'+esc(r.expand)+(r.angle?' · 角度：'+esc(r.angle):'')+'</div></div>';
   });
   h+='<div class="panel"><div class="lbl">写法建议</div><div class="wr">'+esc(it.writing)+'</div></div>';
